@@ -1,0 +1,3 @@
+import { Component } from '@angular/core';
+@Component({standalone:true,template:`<div class="container page"><div class="card simple"><span class="badge badge-danger">BloodCare</span><h1>Contact</h1><p>Pour toute question, contactez-nous via contact@bloodcare.tn ou +216 71 000 000.</p><div class="grid grid-3"><div class="card"><h3>Coordination</h3><p>Une meilleure circulation des informations.</p></div><div class="card"><h3>Suivi</h3><p>Des demandes et dons suivis dans un même espace.</p></div><div class="card"><h3>Innovation</h3><p>Préparation d’outils intelligents pour anticiper les besoins.</p></div></div></div></div>`})
+export class ContactComponent {}

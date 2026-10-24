@@ -1,0 +1,140 @@
+{
+  "realm": "blood",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "fr",
+    "en"
+  ],
+  "defaultLocale": "fr",
+  "accessTokenLifespan": 900,
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Administrateur de la plateforme"
+      },
+      {
+        "name": "HOPITAL",
+        "description": "Compte hôpital"
+      },
+      {
+        "name": "CENTRE_DON",
+        "description": "Compte centre de don"
+      },
+      {
+        "name": "DONNEUR",
+        "description": "Compte donneur"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "blood-front",
+      "name": "BloodCare Angular",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:4200",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@bloodcare.tn",
+      "email": "admin@bloodcare.tn",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "BloodCare",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    },
+    {
+      "username": "hopital@bloodcare.tn",
+      "email": "hopital@bloodcare.tn",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Hôpital",
+      "lastName": "Charles Nicolle",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Hopital123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "HOPITAL"
+      ]
+    },
+    {
+      "username": "centre@bloodcare.tn",
+      "email": "centre@bloodcare.tn",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Centre",
+      "lastName": "Tunis",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Centre123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "CENTRE_DON"
+      ]
+    },
+    {
+      "username": "donneur@bloodcare.tn",
+      "email": "donneur@bloodcare.tn",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Amine",
+      "lastName": "Ben Ali",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Donneur123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "DONNEUR"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<header class="navbar">
+  <div class="nav-inner">
+    <a routerLink="/" class="brand">
+      <span class="logo">♥</span>
+      <span><strong>Blood</strong>Care</span>
+    </a>
+    <nav>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Accueil</a>
+      <a routerLink="/donations" routerLinkActive="active">Dons</a>
+      <a routerLink="/articles" routerLinkActive="active">Articles</a>
+      <a routerLink="/about" routerLinkActive="active">À propos</a>
+      <a routerLink="/contact" routerLinkActive="active">Contact</a>
+    </nav>
+    <div class="actions">
+      @if (auth.isLoggedIn()) {
+        <a class="btn btn-primary" [routerLink]="auth.dashboardLink()">Mon espace</a>
+        <button class="logout" (click)="auth.logout()">Déconnexion</button>
+      } @else {
+        <a routerLink="/login" class="login">Connexion</a>
+        <a routerLink="/signup" class="btn btn-primary">Créer un compte</a>
+      }
+    </div>
+  </div>
+</header>

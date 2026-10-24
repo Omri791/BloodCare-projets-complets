@@ -1,0 +1,618 @@
+diff --git a/MISE_EN_PLACE_KEYCLOAK.md b/MISE_EN_PLACE_KEYCLOAK.md
+new file mode 100644
+index 0000000..2369e94
+--- /dev/null
++++ b/MISE_EN_PLACE_KEYCLOAK.md
+@@ -0,0 +1,51 @@
++# Keycloak — mise en place (BloodCare)
++
++Login des 4 acteurs via Keycloak. Front connecté au backend pour **Administrateur** et **Hôpital**.
++Centre de don et Donneur : le login fonctionne, leurs dashboards restent à brancher par les collègues.
++
++## 1. Keycloak (port 8180)
++```bash
++cd keycloak
++docker compose up -d
++```
++Le realm `blood` est importé automatiquement (rôles `ADMIN`, `HOPITAL`, `CENTRE_DON`, `DONNEUR`,
++client public `blood-front` avec PKCE). Console admin : http://localhost:8180 (admin / admin).
++
++| Email | Mot de passe | Acteur |
++|---|---|---|
++| admin@bloodcare.tn | Admin123! | Administrateur |
++| hopital@bloodcare.tn | Hopital123! | Hôpital |
++| centre@bloodcare.tn | Centre123! | Centre de don |
++| donneur@bloodcare.tn | Donneur123! | Donneur |
++
++Sans Docker : télécharger Keycloak 26, `bin\kc.bat start-dev --http-port=8180`, puis dans la console
++*Create realm* -> importer `keycloak/blood-realm.json`.
++
++## 2. Backend (port 8082) : `./mvnw spring-boot:run`
++## 3. Front (port 4200) : `npm install` puis `npm start`
++
++## Principes (pour toute l'équipe)
++- Le mot de passe n'est plus géré par Spring : Keycloak authentifie, le backend valide le JWT.
++- Compte Keycloak <-> table `utilisateur` : par **email**. Au 1er login, la fiche est créée selon le rôle
++  (Admin / Hôpital / CentreDeDon / Donneur). Un compte sans rôle (inscription libre) devient Donneur.
++- `GET /api/me` renvoie la fiche de l'utilisateur connecté (id, nom, email, `role`).
++- Front : `AuthService` (login, logout, role), `authGuard` avec `data: { roles: [...] }` dans `app.routes.ts`,
++  `authInterceptor` ajoute le token automatiquement à chaque appel de `ApiService`.
++- Backend : les règles d'accès sont dans `config/SecurityConfig.java`. **Par défaut tout `/api/**` est réservé
++  à l'ADMIN** ; chaque acteur ouvre ses endpoints dans la section "ACCÈS PAR ACTEUR" (exemple : Hôpital).
++  Pour limiter un acteur à ses propres données : `@PreAuthorize("@access.selfOrAdmin(#id)")`.
++
++## Modifications faites dans du code existant (le reste est inchangé)
++- `Utilisateur` : ajout de `role` dans le JSON et d'un mot de passe de remplacement à la création
++  (la colonne `mot_de_passe` reste obligatoire en base mais n'est plus utilisée).
++- `HopitalController` : `@PreAuthorize` sur les routes `/{id}...`.
++- `DemandeDeSangService.envoyer` : statut forcé à `EN_ATTENTE`, centre/unités remis à zéro.
++- `UtilisateurRepository` : ajout de `findByEmailIgnoreCase`.
++- `application.properties` : ajout de la ligne `issuer-uri`. `pom.xml` : ajout du starter resource-server.
++- Front : dashboards Hôpital et Admin branchés sur l'API ; pages login/inscription redirigent vers Keycloak.
++- `POST /api/utilisateurs/login` (ancien login) est conservé mais inaccessible : tout `/api/**` exige un JWT.
++  À supprimer quand l'équipe est d'accord.
++
++## Attention
++Le mot de passe de la base Supabase est écrit en clair dans `application.properties` d'un repo public :
++pensez à le changer dans Supabase et à le sortir du code (variables d'environnement).
+diff --git a/keycloak/blood-realm.json b/keycloak/blood-realm.json
+new file mode 100644
+index 0000000..8b76b5e
+--- /dev/null
++++ b/keycloak/blood-realm.json
+@@ -0,0 +1,140 @@
++{
++  "realm": "blood",
++  "enabled": true,
++  "sslRequired": "none",
++  "registrationAllowed": true,
++  "loginWithEmailAllowed": true,
++  "duplicateEmailsAllowed": false,
++  "resetPasswordAllowed": true,
++  "internationalizationEnabled": true,
++  "supportedLocales": [
++    "fr",
++    "en"
++  ],
++  "defaultLocale": "fr",
++  "accessTokenLifespan": 900,
++  "roles": {
++    "realm": [
++      {
++        "name": "ADMIN",
++        "description": "Administrateur de la plateforme"
++      },
++      {
++        "name": "HOPITAL",
++        "description": "Compte hôpital"
++      },
++      {
++        "name": "CENTRE_DON",
++        "description": "Compte centre de don"
++      },
++      {
++        "name": "DONNEUR",
++        "description": "Compte donneur"
++      }
++    ]
++  },
++  "clients": [
++    {
++      "clientId": "blood-front",
++      "name": "BloodCare Angular",
++      "enabled": true,
++      "publicClient": true,
++      "protocol": "openid-connect",
++      "standardFlowEnabled": true,
++      "implicitFlowEnabled": false,
++      "directAccessGrantsEnabled": false,
++      "rootUrl": "http://localhost:4200",
++      "baseUrl": "/",
++      "redirectUris": [
++        "http://localhost:4200/*"
++      ],
++      "webOrigins": [
++        "http://localhost:4200"
++      ],
++      "attributes": {
++        "pkce.code.challenge.method": "S256",
++        "post.logout.redirect.uris": "http://localhost:4200/*"
++      },
++      "defaultClientScopes": [
++        "web-origins",
++        "profile",
++        "roles",
++        "email"
++      ]
++    }
++  ],
++  "users": [
++    {
++      "username": "admin@bloodcare.tn",
++      "email": "admin@bloodcare.tn",
++      "emailVerified": true,
++      "enabled": true,
++      "firstName": "Admin",
++      "lastName": "BloodCare",
++      "credentials": [
++        {
++          "type": "password",
++          "value": "Admin123!",
++          "temporary": false
++        }
++      ],
++      "realmRoles": [
++        "ADMIN"
++      ]
++    },
++    {
++      "username": "hopital@bloodcare.tn",
++      "email": "hopital@bloodcare.tn",
++      "emailVerified": true,
++      "enabled": true,
++      "firstName": "Hôpital",
++      "lastName": "Charles Nicolle",
++      "credentials": [
++        {
++          "type": "password",
++          "value": "Hopital123!",
++          "temporary": false
++        }
++      ],
++      "realmRoles": [
++        "HOPITAL"
++      ]
++    },
++    {
++      "username": "centre@bloodcare.tn",
++      "email": "centre@bloodcare.tn",
++      "emailVerified": true,
++      "enabled": true,
++      "firstName": "Centre",
++      "lastName": "Tunis",
++      "credentials": [
++        {
++          "type": "password",
++          "value": "Centre123!",
++          "temporary": false
++        }
++      ],
++      "realmRoles": [
++        "CENTRE_DON"
++      ]
++    },
++    {
++      "username": "donneur@bloodcare.tn",
++      "email": "donneur@bloodcare.tn",
++      "emailVerified": true,
++      "enabled": true,
++      "firstName": "Amine",
++      "lastName": "Ben Ali",
++      "credentials": [
++        {
++          "type": "password",
++          "value": "Donneur123!",
++          "temporary": false
++        }
++      ],
++      "realmRoles": [
++        "DONNEUR"
++      ]
++    }
++  ]
++}
+\ No newline at end of file
+diff --git a/keycloak/docker-compose.yml b/keycloak/docker-compose.yml
+new file mode 100644
+index 0000000..948b842
+--- /dev/null
++++ b/keycloak/docker-compose.yml
+@@ -0,0 +1,12 @@
++# Keycloak de développement : http://localhost:8180  (console admin : admin / admin)
++services:
++  keycloak:
++    image: quay.io/keycloak/keycloak:26.0
++    command: start-dev --http-port=8180 --import-realm
++    environment:
++      KC_BOOTSTRAP_ADMIN_USERNAME: admin
++      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
++    ports:
++      - "8180:8180"
++    volumes:
++      - ./blood-realm.json:/opt/keycloak/data/import/blood-realm.json:ro
+diff --git a/pom.xml b/pom.xml
+index f29f362..04cff0f 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -38,6 +38,10 @@
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-security</artifactId>
+         </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
++        </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-validation</artifactId>
+diff --git a/src/main/java/com/example/projet_dev/config/SecurityConfig.java b/src/main/java/com/example/projet_dev/config/SecurityConfig.java
+new file mode 100644
+index 0000000..3abf679
+--- /dev/null
++++ b/src/main/java/com/example/projet_dev/config/SecurityConfig.java
+@@ -0,0 +1,118 @@
++package com.example.projet_dev.config;
++
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.http.HttpMethod;
++import org.springframework.security.config.Customizer;
++import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
++import org.springframework.security.config.annotation.web.builders.HttpSecurity;
++import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
++import org.springframework.security.config.http.SessionCreationPolicy;
++import org.springframework.security.core.GrantedAuthority;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
++import org.springframework.security.web.SecurityFilterChain;
++import org.springframework.web.cors.CorsConfiguration;
++import org.springframework.web.cors.CorsConfigurationSource;
++import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
++
++import java.util.Arrays;
++import java.util.Collection;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * Le backend est un "resource server" : il ne gère aucun mot de passe,
++ * il valide uniquement le JWT émis par Keycloak.
++ *
++ * Rôles Keycloak (realm roles) : ADMIN, HOPITAL, CENTRE_DON, DONNEUR
++ * Un compte authentifié sans aucun de ces rôles (ex: inscription libre) est traité comme DONNEUR.
++ *
++ * >>> POUR LES COLLÈGUES (Centre de don / Donneur) : pour ouvrir un endpoint à votre acteur,
++ * >>> ajoutez une ligne dans la section "ACCÈS PAR ACTEUR" ci-dessous, AVANT la règle
++ * >>> ".requestMatchers("/api/**").hasRole("ADMIN")". Exemple :
++ * >>>   .requestMatchers("/api/centres/*\/stocks/**").hasAnyRole("ADMIN", "CENTRE_DON")
++ * >>> Pour limiter un centre/donneur à SES données : @PreAuthorize("@access.selfOrAdmin(#id)")
++ * >>> sur la méthode du controller (voir HopitalController).
++ */
++@Configuration
++@EnableWebSecurity
++@EnableMethodSecurity
++public class SecurityConfig {
++
++    @Bean
++    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
++        http
++                .csrf(csrf -> csrf.disable())                       // API stateless + Bearer token
++                .cors(Customizer.withDefaults())                    // utilise CorsConfig
++                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
++                .authorizeHttpRequests(auth -> auth
++                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
++                        .requestMatchers("/error").permitAll()
++
++                        // Profil de l'utilisateur connecté : les 4 acteurs
++                        .requestMatchers("/api/me", "/api/me/**").hasAnyRole("ADMIN", "HOPITAL", "CENTRE_DON", "DONNEUR")
++
++                        // ================= ACCÈS PAR ACTEUR =================
++
++                        // --- Hôpital ---
++                        // Espace hôpital : l'admin OU l'hôpital concerné
++                        // (le "est-ce bien mon hôpital ?" est vérifié par @PreAuthorize dans HopitalController)
++                        .requestMatchers(HttpMethod.GET, "/api/hopitaux/*").hasAnyRole("ADMIN", "HOPITAL")
++                        .requestMatchers(HttpMethod.GET, "/api/hopitaux/*/patients").hasAnyRole("ADMIN", "HOPITAL")
++                        .requestMatchers("/api/hopitaux/*/demandes").hasAnyRole("ADMIN", "HOPITAL")
++
++                        // --- Centre de don : à compléter par le collègue en charge ---
++                        // --- Donneur : à compléter par le collègue en charge ---
++
++                        // Tout le reste de l'API : administrateur uniquement (pour l'instant)
++                        .requestMatchers("/api/**").hasRole("ADMIN")
++
++                        .anyRequest().denyAll()
++                )
++                .oauth2ResourceServer(oauth -> oauth
++                        .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtConverter()))
++                );
++        return http.build();
++    }
++
++    @Value("${app.cors.allowed-origins}")
++    private String[] allowedOrigins;
++
++    /**
++     * CORS au niveau Spring Security : le preflight (OPTIONS) doit être traité AVANT
++     * l'authentification JWT. (Le CorsConfig existant reste en place, il n'est plus suffisant seul.)
++     */
++    @Bean
++    CorsConfigurationSource corsConfigurationSource() {
++        CorsConfiguration config = new CorsConfiguration();
++        config.setAllowedOrigins(Arrays.asList(allowedOrigins));
++        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
++        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
++        config.setMaxAge(3600L);
++        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
++        source.registerCorsConfiguration("/api/**", config);
++        return source;
++    }
++
++    private static final List<String> APP_ROLES = List.of("ADMIN", "HOPITAL", "CENTRE_DON", "DONNEUR");
++
++    /** Transforme realm_access.roles du token Keycloak en ROLE_xxx Spring Security. */
++    private JwtAuthenticationConverter keycloakJwtConverter() {
++        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
++        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
++            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
++            Collection<?> roles = (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> r)
++                    ? r : List.of();
++            List<GrantedAuthority> authorities = new java.util.ArrayList<>();
++            roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
++            // aucun rôle applicatif (ex: inscription libre) -> DONNEUR
++            if (roles.stream().noneMatch(r -> APP_ROLES.contains(String.valueOf(r)))) {
++                authorities.add(new SimpleGrantedAuthority("ROLE_DONNEUR"));
++            }
++            return authorities;
++        });
++        return converter;
++    }
++}
+diff --git a/src/main/java/com/example/projet_dev/controller/HopitalController.java b/src/main/java/com/example/projet_dev/controller/HopitalController.java
+index ac2507f..e5b3d1b 100644
+--- a/src/main/java/com/example/projet_dev/controller/HopitalController.java
++++ b/src/main/java/com/example/projet_dev/controller/HopitalController.java
+@@ -9,6 +9,7 @@ import com.example.projet_dev.service.DemandeDeSangService;
+ import com.example.projet_dev.service.HopitalService;
+ import com.example.projet_dev.service.PatientService;
+ import lombok.RequiredArgsConstructor;
++import org.springframework.security.access.prepost.PreAuthorize;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+@@ -30,6 +31,7 @@ public class HopitalController {
+     }
+ 
+     @GetMapping("/{id}")
++    @PreAuthorize("@access.selfOrAdmin(#id)")
+     public Hopital getById(@PathVariable Long id) {
+         return service.findById(id);
+     }
+@@ -55,18 +57,21 @@ public class HopitalController {
+ 
+     /** Hopital gere Patient */
+     @GetMapping("/{id}/patients")
++    @PreAuthorize("@access.selfOrAdmin(#id)")
+     public List<Patient> getPatients(@PathVariable Long id) {
+         return patientService.findByHopital(id);
+     }
+ 
+     /** Hopital.suivreDemande() */
+     @GetMapping("/{id}/demandes")
++    @PreAuthorize("@access.selfOrAdmin(#id)")
+     public List<DemandeDeSang> getDemandes(@PathVariable Long id) {
+         return demandeService.findByHopital(id);
+     }
+ 
+     /** Hopital.envoyerDemande() */
+     @PostMapping("/{id}/demandes")
++    @PreAuthorize("@access.selfOrAdmin(#id)")
+     @ResponseStatus(HttpStatus.CREATED)
+     public DemandeDeSang envoyerDemande(@PathVariable Long id, @RequestBody DemandeDeSang demande) {
+         return demandeService.envoyer(id, demande);
+diff --git a/src/main/java/com/example/projet_dev/controller/MeController.java b/src/main/java/com/example/projet_dev/controller/MeController.java
+new file mode 100644
+index 0000000..a9e132e
+--- /dev/null
++++ b/src/main/java/com/example/projet_dev/controller/MeController.java
+@@ -0,0 +1,33 @@
++package com.example.projet_dev.controller;
++
++import com.example.projet_dev.entity.Notification;
++import com.example.projet_dev.entity.Utilisateur;
++import com.example.projet_dev.service.AccessService;
++import com.example.projet_dev.service.NotificationService;
++import lombok.RequiredArgsConstructor;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++import java.util.List;
++
++/** Profil de l'utilisateur connecté (identifié par l'email du token Keycloak). */
++@RestController
++@RequestMapping("/api/me")
++@RequiredArgsConstructor
++public class MeController {
++
++    private final AccessService access;
++    private final NotificationService notificationService;
++
++    /** Renvoie la fiche (id, nom, email, role...) : le front en déduit l'id de l'hôpital. */
++    @GetMapping
++    public Utilisateur me() {
++        return access.currentUser();
++    }
++
++    @GetMapping("/notifications")
++    public List<Notification> notifications() {
++        return notificationService.findByUtilisateur(access.currentUser().getId());
++    }
++}
+diff --git a/src/main/java/com/example/projet_dev/entity/Utilisateur.java b/src/main/java/com/example/projet_dev/entity/Utilisateur.java
+index 6e436d6..e362f80 100644
+--- a/src/main/java/com/example/projet_dev/entity/Utilisateur.java
++++ b/src/main/java/com/example/projet_dev/entity/Utilisateur.java
+@@ -7,8 +7,11 @@ import lombok.Getter;
+ import lombok.NoArgsConstructor;
+ import lombok.Setter;
+ 
++import org.hibernate.Hibernate;
++
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.UUID;
+ 
+ @Entity
+ @Table(name = "utilisateur")
+@@ -36,4 +39,24 @@ public class Utilisateur {
+     @JsonIgnore   //évite la boucle JSON
+     @OneToMany(mappedBy = "utilisateur",cascade = CascadeType.ALL)
+     private List<Notification> notifications = new ArrayList<>();
++
++    /** L'authentification est faite par Keycloak : la colonne est conservée mais n'est plus utilisée. */
++    @PrePersist
++    void ensurePasswordPlaceholder() {
++        if (motDePasse == null || motDePasse.isBlank()) {
++            motDePasse = "KEYCLOAK-" + UUID.randomUUID();
++        }
++    }
++
++    /** Type de compte exposé au front : ADMIN, HOPITAL, CENTRE_DON, DONNEUR. */
++    @JsonProperty(value = "role", access = JsonProperty.Access.READ_ONLY)
++    public String getRole() {
++        return switch (Hibernate.getClass(this).getSimpleName()) {
++            case "Admin" -> "ADMIN";
++            case "Hopital" -> "HOPITAL";
++            case "CentreDeDon" -> "CENTRE_DON";
++            case "Donneur" -> "DONNEUR";
++            default -> "UTILISATEUR";
++        };
++    }
+ }
+diff --git a/src/main/java/com/example/projet_dev/repository/UtilisateurRepository.java b/src/main/java/com/example/projet_dev/repository/UtilisateurRepository.java
+index 34147de..288553e 100644
+--- a/src/main/java/com/example/projet_dev/repository/UtilisateurRepository.java
++++ b/src/main/java/com/example/projet_dev/repository/UtilisateurRepository.java
+@@ -7,5 +7,6 @@ import java.util.Optional;
+ 
+ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> {
+     Optional<Utilisateur> findByEmail(String email);
++    Optional<Utilisateur> findByEmailIgnoreCase(String email);
+     boolean existsByEmail(String email);
+ }
+diff --git a/src/main/java/com/example/projet_dev/service/AccessService.java b/src/main/java/com/example/projet_dev/service/AccessService.java
+new file mode 100644
+index 0000000..f5ebb98
+--- /dev/null
++++ b/src/main/java/com/example/projet_dev/service/AccessService.java
+@@ -0,0 +1,90 @@
++package com.example.projet_dev.service;
++
++import com.example.projet_dev.entity.Admin;
++import com.example.projet_dev.entity.CentreDeDon;
++import com.example.projet_dev.entity.Donneur;
++import com.example.projet_dev.entity.Hopital;
++import com.example.projet_dev.entity.Utilisateur;
++import com.example.projet_dev.repository.UtilisateurRepository;
++import lombok.RequiredArgsConstructor;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.http.HttpStatus;
++import org.springframework.security.core.Authentication;
++import org.springframework.security.core.context.SecurityContextHolder;
++import org.springframework.security.oauth2.jwt.Jwt;
++import org.springframework.stereotype.Service;
++import org.springframework.web.server.ResponseStatusException;
++
++import java.util.Collection;
++import java.util.Map;
++
++/**
++ * Fait le lien entre le compte Keycloak (JWT) et la table "utilisateur" (clé : email).
++ * Utilisé aussi dans les expressions @PreAuthorize("@access.selfOrAdmin(#id)").
++ */
++@Service("access")
++@RequiredArgsConstructor
++public class AccessService {
++
++    private final UtilisateurRepository repository;
++
++    /** Utilisateur de la base correspondant au token courant (créé au 1er login si absent). */
++    public Utilisateur currentUser() {
++        Jwt jwt = currentJwt();
++        String email = jwt.getClaimAsString("email");
++        if (email == null || email.isBlank()) {
++            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Le token ne contient pas d'email");
++        }
++        return repository.findByEmailIgnoreCase(email).orElseGet(() -> provision(jwt, email));
++    }
++
++    /** true si l'appelant est ADMIN, ou si {@code id} est son propre identifiant. */
++    public boolean selfOrAdmin(Long id) {
++        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
++        boolean admin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
++        return admin || currentUser().getId().equals(id);
++    }
++
++    // ------------------------------------------------------------------
++
++    /** Premier login d'un compte Keycloak sans fiche en base : on crée la fiche selon son rôle. */
++    private Utilisateur provision(Jwt jwt, String email) {
++        Collection<?> roles = roles(jwt);
++        Utilisateur u;
++        if (roles.contains("ADMIN")) {
++            u = new Admin();
++        } else if (roles.contains("HOPITAL")) {
++            u = new Hopital();
++        } else if (roles.contains("CENTRE_DON")) {
++            u = new CentreDeDon();
++        } else {
++            u = new Donneur();   // DONNEUR, ou compte sans rôle applicatif (inscription libre)
++        }
++        u.setEmail(email);
++        u.setNom(displayName(jwt, email));
++        try {
++            return repository.save(u);
++        } catch (DataIntegrityViolationException e) {
++            // deux requêtes simultanées au 1er login : l'autre a déjà créé la fiche
++            return repository.findByEmailIgnoreCase(email).orElseThrow(() -> e);
++        }
++    }
++
++    private static String displayName(Jwt jwt, String email) {
++        String name = jwt.getClaimAsString("name");
++        if (name != null && !name.isBlank()) return name;
++        return email.substring(0, email.indexOf('@') > 0 ? email.indexOf('@') : email.length());
++    }
++
++    private static Collection<?> roles(Jwt jwt) {
++        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
++        if (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> r) return r;
++        return java.util.List.of();
++    }
++
++    private static Jwt currentJwt() {
++        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
++        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) return jwt;
++        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Non authentifié");
++    }
++}
+diff --git a/src/main/java/com/example/projet_dev/service/DemandeDeSangService.java b/src/main/java/com/example/projet_dev/service/DemandeDeSangService.java
+index 25aa4cb..233d5ba 100644
+--- a/src/main/java/com/example/projet_dev/service/DemandeDeSangService.java
++++ b/src/main/java/com/example/projet_dev/service/DemandeDeSangService.java
+@@ -52,6 +52,12 @@ public class DemandeDeSangService {
+     public DemandeDeSang envoyer(Long hopitalId, DemandeDeSang demande) {
+         demande.setId(null);
+         demande.setHopital(hopitalService.findById(hopitalId));
++        // champs gérés par le serveur / le centre de don, jamais par l'hôpital
++        demande.setStatut("EN_ATTENTE");
++        demande.setCentreDeDon(null);
++        demande.setUnitesFournies(0);
++        demande.setDelaiTraitement(null);
++        demande.setDateCreation(null);
+         return repository.save(demande);
+     }
+ 
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+index 31f69ce..5c88bf5 100644
+--- a/src/main/resources/application.properties
++++ b/src/main/resources/application.properties
+@@ -14,3 +14,6 @@ server.port=8082
+ 
+ # CORS : origines autorisées (frontend Angular), séparées par des virgules
+ app.cors.allowed-origins=http://localhost:4200
++
++# Keycloak : le backend valide les JWT émis par ce realm
++spring.security.oauth2.resourceserver.jwt.issuer-uri=${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/blood}

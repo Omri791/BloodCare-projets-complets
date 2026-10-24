@@ -1,0 +1,10 @@
+<div class="container page">
+  <div class="page-title"><div><h1>Articles & conseils</h1><p>Informations utiles sur le don et la santé.</p></div></div>
+  <div class="grid grid-3">
+    @for(article of articles; track article.id){
+      <article class="card article">
+        <div class="cover">🩸</div><span class="badge badge-danger">{{article.category}}</span><h3>{{article.title}}</h3><p>{{article.excerpt}}</p><small>{{article.date}}</small><a [routerLink]="['/articles',article.id]">Lire l'article →</a>
+      </article>
+    }
+  </div>
+</div>

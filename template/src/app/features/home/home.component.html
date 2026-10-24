@@ -1,0 +1,28 @@
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <span class="eyebrow">Système intelligent de gestion des dons</span>
+      <h1>Chaque don peut<br><strong>sauver une vie.</strong></h1>
+      <p>BloodCare connecte les donneurs, centres de don et hôpitaux pour rendre la gestion du sang plus rapide, simple et efficace.</p>
+      <div class="hero-actions"><a routerLink="/signup" class="btn btn-primary">Devenir donneur</a><a routerLink="/about" class="btn btn-secondary">Découvrir la plateforme</a></div>
+      <div class="trust"><span>✓ Don sécurisé</span><span>✓ Suivi en temps réel</span><span>✓ Centres connectés</span></div>
+    </div>
+    <div class="hero-card">
+      <div class="pulse">♥</div>
+      <h3>Besoin de sang ?</h3><p>Les centres peuvent publier et suivre les demandes des hôpitaux.</p>
+      <div class="blood-row"><app-blood-type-badge type="A+" /><app-blood-type-badge type="O+" /><app-blood-type-badge type="B+" /><app-blood-type-badge type="AB+" /></div>
+    </div>
+  </div>
+</section>
+
+<section class="container page">
+  <app-section-title eyebrow="Notre mission" title="Une plateforme pour tous les acteurs" description="Un espace adapté aux besoins de chaque utilisateur." />
+  <div class="grid grid-4">
+    <div class="card feature"><div class="ico">🏥</div><h3>Hôpital</h3><p>Créer et suivre les demandes de sang, consulter les notifications.</p><a routerLink="/dashboard/hospital">Espace hôpital →</a></div>
+    <div class="card feature"><div class="ico">🩸</div><h3>Centre de don</h3><p>Gérer le stock, les donneurs, rendez-vous et demandes.</p><a routerLink="/dashboard/center">Espace centre →</a></div>
+    <div class="card feature"><div class="ico">❤️</div><h3>Donneur</h3><p>Gérer sa disponibilité, ses rendez-vous et son historique.</p><a routerLink="/dashboard/donor">Espace donneur →</a></div>
+    <div class="card feature"><div class="ico">⚙️</div><h3>Administrateur</h3><p>Administrer les utilisateurs, hôpitaux et centres.</p><a routerLink="/dashboard/admin">Administration →</a></div>
+  </div>
+</section>
+
+<section class="stats"><div class="container grid grid-4"><div><strong>2 540+</strong><span>Donneurs inscrits</span></div><div><strong>36</strong><span>Centres connectés</span></div><div><strong>128</strong><span>Demandes traitées</span></div><div><strong>98%</strong><span>Demandes suivies</span></div></div></section>

@@ -1,0 +1,6 @@
+<div class="container page">
+  <div class="page-title"><div><h1>Dons de sang</h1><p>Suivi des opérations de don.</p></div><a routerLink="/signup" class="btn btn-primary">Devenir donneur</a></div>
+  <div class="card table-wrap"><table><thead><tr><th>Donneur</th><th>Groupe</th><th>Centre</th><th>Date</th><th>Quantité</th><th>Statut</th><th></th></tr></thead><tbody>
+  @for(d of donations;track d.id){<tr><td>{{d.donorName}}</td><td><app-blood-type-badge [type]="d.bloodType"/></td><td>{{d.centerName}}</td><td>{{d.date}}</td><td>{{d.quantity}} ml</td><td><span class="badge" [class.badge-success]="d.status==='COMPLETED'||d.status==='ACCEPTED'" [class.badge-warning]="d.status==='PENDING'" [class.badge-danger]="d.status==='CANCELLED'">{{d.status}}</span></td><td><a [routerLink]="['/donations',d.id]" class="btn btn-secondary">Détails</a></td></tr>}
+  </tbody></table></div>
+</div>

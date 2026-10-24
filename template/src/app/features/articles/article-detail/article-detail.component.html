@@ -1,0 +1,3 @@
+<div class="container page">
+  @if(article){<article class="card detail"><a routerLink="/articles">← Retour aux articles</a><span class="badge badge-danger">{{article.category}}</span><h1>{{article.title}}</h1><small>{{article.date}}</small><p class="lead">{{article.excerpt}}</p><div class="content"><p>{{article.content}}</p></div></article>} @else {<div class="empty">Article introuvable.</div>}
+</div>

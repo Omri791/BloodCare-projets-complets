@@ -1,0 +1,17 @@
+<div class="container page">
+<div class="page-title"><div><h1>Espace Hôpital</h1><p>{{hopital?.nom ?? 'Chargement…'}} — suivez vos demandes de sang et notifications.</p></div><button class="btn btn-primary" (click)="showForm=!showForm" [disabled]="!hopital">+ Nouvelle demande</button></div>
+
+@if(error){<div class="card section" style="border-left:4px solid var(--danger)">{{error}} <button class="btn btn-secondary" (click)="load()">Réessayer</button></div>}
+
+@if(showForm){<div class="card section"><h2>Nouvelle demande de sang</h2><form class="form-grid" (ngSubmit)="submit()"><div class="form-group"><label>Groupe sanguin</label><select [(ngModel)]="request.groupeSanguin" name="groupeSanguin"><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div><div class="form-group"><label>Quantité (poches)</label><input type="number" min="1" [(ngModel)]="request.quantite" name="quantite" required></div><div class="form-group"><label>Urgence</label><select [(ngModel)]="request.urgence" name="urgence"><option>NORMAL</option><option>URGENT</option><option>CRITICAL</option></select></div><div class="form-group"><label>Motif</label><input [(ngModel)]="request.motif" name="motif"></div><div class="form-group full"><button class="btn btn-primary" [disabled]="saving">{{saving ? 'Envoi…' : 'Envoyer la demande'}}</button></div></form></div>}
+
+<div class="grid grid-4"><div class="card stat"><div><span>Demandes</span><div class="number">{{total}}</div></div><div class="icon">📋</div></div><div class="card stat"><div><span>En attente</span><div class="number">{{enAttente}}</div></div><div class="icon">⏳</div></div><div class="card stat"><div><span>Traitées</span><div class="number">{{traitees}}</div></div><div class="icon">✓</div></div><div class="card stat"><div><span>Notifications</span><div class="number">{{nonLues}}</div></div><div class="icon">🔔</div></div></div>
+
+<div class="card section table-wrap"><div class="section-head"><h2>Mes demandes</h2></div>
+@if(loading){<p>Chargement…</p>}
+@else if(demandes.length===0){<p>Aucune demande pour le moment.</p>}
+@else{<table><thead><tr><th>#</th><th>Date</th><th>Groupe</th><th>Quantité</th><th>Urgence</th><th>Statut</th></tr></thead><tbody>@for(d of demandes;track d.id){<tr><td>#{{d.id}}</td><td>{{d.dateCreation | date:'dd/MM/yyyy'}}</td><td>{{d.groupeSanguin}}</td><td>{{d.quantite}}</td><td>{{d.urgence}}</td><td><span class="badge" [class]="'badge '+statutClass(d.statut)">{{statutLabel(d.statut)}}</span></td></tr>}</tbody></table>}
+</div>
+
+@if(notifications.length>0){<div class="card section"><h2>Notifications</h2>@for(n of notifications;track n.id){<p [style.font-weight]="n.lu ? 'normal' : '700'">{{n.date | date:'dd/MM/yyyy'}} — {{n.message}}</p>}</div>}
+</div>

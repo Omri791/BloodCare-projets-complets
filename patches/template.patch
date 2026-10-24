@@ -1,0 +1,789 @@
+diff --git a/angular.json b/angular.json
+index 7784d3a..de36396 100644
+--- a/angular.json
++++ b/angular.json
+@@ -17,7 +17,7 @@
+             "browser": "src/main.ts",
+             "polyfills": [],
+             "tsConfig": "tsconfig.app.json",
+-            "assets": ["src/assets"],
++            "assets": ["src/assets", { "glob": "silent-check-sso.html", "input": "src", "output": "/" }],
+             "styles": ["src/styles.css"]
+           },
+           "configurations": {
+diff --git a/package-lock.json b/package-lock.json
+index 81286b7..871f88f 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -15,6 +15,7 @@
+         "@angular/forms": "^20.0.0",
+         "@angular/platform-browser": "^20.0.0",
+         "@angular/router": "^20.0.0",
++        "keycloak-js": "^26.2.4",
+         "rxjs": "^7.8.2",
+         "zone.js": "^0.15.0"
+       },
+@@ -9144,6 +9145,15 @@
+         "source-map-support": "^0.5.5"
+       }
+     },
++    "node_modules/keycloak-js": {
++      "version": "26.2.4",
++      "resolved": "https://registry.npmjs.org/keycloak-js/-/keycloak-js-26.2.4.tgz",
++      "integrity": "sha512-PnXpR3ubETGOt0B/Qt2lxmPbkZr5bc3vlQsOqDoTPPQsZRp7JjhTKxlJ187uWh8qJhvBab6Gsjb06a8ayOPfuw==",
++      "license": "Apache-2.0",
++      "workspaces": [
++        "test"
++      ]
++    },
+     "node_modules/kind-of": {
+       "version": "6.0.3",
+       "resolved": "https://registry.npmjs.org/kind-of/-/kind-of-6.0.3.tgz",
+diff --git a/package.json b/package.json
+index 55f3459..58e292a 100644
+--- a/package.json
++++ b/package.json
+@@ -15,6 +15,7 @@
+     "@angular/forms": "^20.0.0",
+     "@angular/platform-browser": "^20.0.0",
+     "@angular/router": "^20.0.0",
++    "keycloak-js": "^26.2.4",
+     "rxjs": "^7.8.2",
+     "zone.js": "^0.15.0"
+   },
+diff --git a/src/app/app.config.ts b/src/app/app.config.ts
+index d525726..97ad3a6 100644
+--- a/src/app/app.config.ts
++++ b/src/app/app.config.ts
+@@ -1,7 +1,15 @@
+-import { ApplicationConfig } from '@angular/core';
++import { ApplicationConfig, inject, provideAppInitializer } from '@angular/core';
+ import { provideRouter } from '@angular/router';
++import { provideHttpClient, withInterceptors } from '@angular/common/http';
+ import { routes } from './app.routes';
++import { AuthService } from './core/services/auth.service';
++import { authInterceptor } from './core/interceptors/auth.interceptor';
+ 
+ export const appConfig: ApplicationConfig = {
+-  providers: [provideRouter(routes)]
++  providers: [
++    provideRouter(routes),
++    provideHttpClient(withInterceptors([authInterceptor])),
++    // Keycloak est initialisé AVANT l'affichage de l'application
++    provideAppInitializer(() => inject(AuthService).init())
++  ]
+ };
+diff --git a/src/app/app.routes.ts b/src/app/app.routes.ts
+index 31ed7e0..9482a63 100644
+--- a/src/app/app.routes.ts
++++ b/src/app/app.routes.ts
+@@ -1,5 +1,5 @@
+ import { Routes } from '@angular/router';
+-import { authGuard } from './core/guards/auth.guard';
++import { authGuard, dashboardRedirectGuard } from './core/guards/auth.guard';
+ 
+ export const routes: Routes = [
+   {
+@@ -44,24 +44,29 @@ export const routes: Routes = [
+   },
+ 
+   // Dashboards
++  { path: 'dashboard', canActivate: [dashboardRedirectGuard], children: [] },
+   {
+     path: 'dashboard/hospital',
+     canActivate: [authGuard],
++    data: { roles: ['HOSPITAL'] },
+     loadComponent: () => import('./features/hospital/hospital-dashboard.component').then(m => m.HospitalDashboardComponent)
+   },
+   {
+     path: 'dashboard/center',
+     canActivate: [authGuard],
++    data: { roles: ['CENTER'] },
+     loadComponent: () => import('./features/center/center-dashboard.component').then(m => m.CenterDashboardComponent)
+   },
+   {
+     path: 'dashboard/donor',
+     canActivate: [authGuard],
++    data: { roles: ['DONOR'] },
+     loadComponent: () => import('./features/donor/donor-dashboard.component').then(m => m.DonorDashboardComponent)
+   },
+   {
+     path: 'dashboard/admin',
+     canActivate: [authGuard],
++    data: { roles: ['ADMIN'] },
+     loadComponent: () => import('./features/admin/admin-dashboard.component').then(m => m.AdminDashboardComponent)
+   },
+ 
+diff --git a/src/app/core/config/app-config.ts b/src/app/core/config/app-config.ts
+new file mode 100644
+index 0000000..b55cac6
+--- /dev/null
++++ b/src/app/core/config/app-config.ts
+@@ -0,0 +1,9 @@
++export const APP_CONFIG = {
++  /** API Spring Boot (server.port=8082 dans application.properties) */
++  apiUrl: 'http://localhost:8082/api',
++  keycloak: {
++    url: 'http://localhost:8180',
++    realm: 'blood',
++    clientId: 'blood-front'
++  }
++};
+diff --git a/src/app/core/guards/auth.guard.ts b/src/app/core/guards/auth.guard.ts
+index fdabb24..13503e3 100644
+--- a/src/app/core/guards/auth.guard.ts
++++ b/src/app/core/guards/auth.guard.ts
+@@ -1,9 +1,38 @@
+ import { inject } from '@angular/core';
+ import { CanActivateFn, Router } from '@angular/router';
+ import { AuthService } from '../services/auth.service';
++import { UserRole } from '../../shared/models/user.model';
+ 
+-export const authGuard: CanActivateFn = () => {
++/**
++ * Protège une route.
++ *  - non connecté  -> page de login Keycloak, puis retour sur la page demandée
++ *  - mauvais rôle  -> redirigé vers son propre dashboard
++ * Rôles autorisés : data: { roles: ['ADMIN'] } dans app.routes.ts
++ */
++export const authGuard: CanActivateFn = (route, state) => {
+   const auth = inject(AuthService);
+   const router = inject(Router);
+-  return auth.isLoggedIn() ? true : router.createUrlTree(['/login']);
++
++  if (!auth.isLoggedIn()) {
++    auth.login(state.url);
++    return false;
++  }
++
++  const allowed = route.data['roles'] as UserRole[] | undefined;
++  const role = auth.role();
++  if (allowed && (!role || !allowed.includes(role))) {
++    return router.createUrlTree([auth.dashboardLink()]);
++  }
++  return true;
++};
++
++/** /dashboard -> dashboard correspondant au rôle (utilisé comme page de retour après login). */
++export const dashboardRedirectGuard: CanActivateFn = (_route, state) => {
++  const auth = inject(AuthService);
++  const router = inject(Router);
++  if (!auth.isLoggedIn()) {
++    auth.login(state.url);
++    return false;
++  }
++  return router.createUrlTree([auth.dashboardLink()]);
+ };
+diff --git a/src/app/core/interceptors/auth.interceptor.ts b/src/app/core/interceptors/auth.interceptor.ts
+new file mode 100644
+index 0000000..d435697
+--- /dev/null
++++ b/src/app/core/interceptors/auth.interceptor.ts
+@@ -0,0 +1,14 @@
++import { HttpInterceptorFn } from '@angular/common/http';
++import { inject } from '@angular/core';
++import { from, switchMap } from 'rxjs';
++import { AuthService } from '../services/auth.service';
++import { APP_CONFIG } from '../config/app-config';
++
++/** Ajoute "Authorization: Bearer <token Keycloak>" à tous les appels vers l'API Spring Boot. */
++export const authInterceptor: HttpInterceptorFn = (req, next) => {
++  if (!req.url.startsWith(APP_CONFIG.apiUrl)) return next(req);
++  const auth = inject(AuthService);
++  return from(auth.getToken()).pipe(
++    switchMap(token => next(token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req))
++  );
++};
+diff --git a/src/app/core/services/api.service.ts b/src/app/core/services/api.service.ts
+index 03b1a3d..682228e 100644
+--- a/src/app/core/services/api.service.ts
++++ b/src/app/core/services/api.service.ts
+@@ -1,13 +1,15 @@
+ import { Injectable } from '@angular/core';
+ import { HttpClient } from '@angular/common/http';
+ import { Observable } from 'rxjs';
++import { APP_CONFIG } from '../config/app-config';
+ 
+ @Injectable({providedIn:'root'})
+ export class ApiService {
+-  private readonly baseUrl = 'http://localhost:8080/api';
++  private readonly baseUrl = APP_CONFIG.apiUrl;
+   constructor(private http:HttpClient) {}
+   get<T>(url:string):Observable<T>{ return this.http.get<T>(`${this.baseUrl}${url}`); }
+   post<T>(url:string,body:unknown):Observable<T>{ return this.http.post<T>(`${this.baseUrl}${url}`,body); }
+   put<T>(url:string,body:unknown):Observable<T>{ return this.http.put<T>(`${this.baseUrl}${url}`,body); }
++  patch<T>(url:string,body:unknown):Observable<T>{ return this.http.patch<T>(`${this.baseUrl}${url}`,body); }
+   delete<T>(url:string):Observable<T>{ return this.http.delete<T>(`${this.baseUrl}${url}`); }
+ }
+diff --git a/src/app/core/services/auth.service.ts b/src/app/core/services/auth.service.ts
+index 36efd61..bf0dbe6 100644
+--- a/src/app/core/services/auth.service.ts
++++ b/src/app/core/services/auth.service.ts
+@@ -1,42 +1,88 @@
+ import { Injectable } from '@angular/core';
+-import { Router } from '@angular/router';
++import Keycloak from 'keycloak-js';
+ import { User, UserRole } from '../../shared/models/user.model';
++import { APP_CONFIG } from '../config/app-config';
++
++/** Rôles realm Keycloak -> rôles utilisés par le front (ordre = priorité). */
++const ROLE_MAP: [string, UserRole][] = [
++  ['ADMIN', 'ADMIN'],
++  ['HOPITAL', 'HOSPITAL'],
++  ['CENTRE_DON', 'CENTER'],
++  ['DONNEUR', 'DONOR']
++];
+ 
+ @Injectable({ providedIn: 'root' })
+ export class AuthService {
+-  private key = 'bloodcare_user';
++  private keycloak = new Keycloak(APP_CONFIG.keycloak);
++
++  /** Appelé au démarrage de l'application (voir app.config.ts). */
++  async init(): Promise<void> {
++    try {
++      await this.keycloak.init({
++        onLoad: 'check-sso',                       // reconnecte sans forcer le login sur les pages publiques
++        pkceMethod: 'S256',
++        silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`
++      });
++    } catch (e) {
++      // Keycloak injoignable : les pages publiques restent accessibles
++      console.error('Keycloak init error', e);
++    }
++  }
+ 
+-  constructor(private router: Router) {}
++  isLoggedIn(): boolean { return this.keycloak.authenticated === true; }
+ 
+-  login(email: string, password: string, role: UserRole): boolean {
+-    if (!email || !password) return false;
+-    const user: User = { id: 1, firstName: 'Utilisateur', lastName: 'BloodCare', email, role };
+-    localStorage.setItem(this.key, JSON.stringify(user));
+-    return true;
++  /** Redirige vers la page de connexion Keycloak, puis revient sur `path`. */
++  login(path = '/dashboard'): Promise<void> {
++    return this.keycloak.login({ redirectUri: window.location.origin + path });
+   }
+ 
+-  signup(firstName: string, lastName: string, email: string, role: UserRole): boolean {
+-    const user: User = { id: Date.now(), firstName, lastName, email, role };
+-    localStorage.setItem(this.key, JSON.stringify(user));
+-    return true;
++  logout(): Promise<void> {
++    return this.keycloak.logout({ redirectUri: window.location.origin });
+   }
+ 
+-  user(): User | null {
+-    const raw = localStorage.getItem(this.key);
+-    return raw ? JSON.parse(raw) as User : null;
++  /** Token valide (rafraîchi s'il expire dans moins de 30 s). */
++  async getToken(): Promise<string | undefined> {
++    if (!this.isLoggedIn()) return undefined;
++    try {
++      await this.keycloak.updateToken(30);
++    } catch {
++      await this.login(window.location.pathname);
++      return undefined;
++    }
++    return this.keycloak.token;
+   }
+ 
+-  isLoggedIn(): boolean { return !!this.user(); }
++  /** Page d'inscription Keycloak (compte sans rôle applicatif = Donneur). */
++  register(path = '/dashboard'): Promise<void> {
++    return this.keycloak.register({ redirectUri: window.location.origin + path });
++  }
++
++  /** Rôle applicatif ; un compte connecté sans rôle (inscription libre) est un Donneur. */
++  role(): UserRole | null {
++    if (!this.isLoggedIn()) return null;
++    const roles: string[] = this.keycloak.tokenParsed?.realm_access?.roles ?? [];
++    return ROLE_MAP.find(([kc]) => roles.includes(kc))?.[1] ?? 'DONOR';
++  }
+ 
+-  logout(): void {
+-    localStorage.removeItem(this.key);
+-    this.router.navigate(['/']);
++  user(): User | null {
++    const t = this.keycloak.tokenParsed;
++    const role = this.role();
++    if (!t || !role) return null;
++    return {
++      firstName: t['given_name'] ?? t['preferred_username'] ?? '',
++      lastName: t['family_name'] ?? '',
++      email: t['email'] ?? '',
++      role
++    };
+   }
+ 
+   dashboardLink(): string {
+-    const role = this.user()?.role;
+-    return role === 'HOSPITAL' ? '/dashboard/hospital' :
+-           role === 'CENTER' ? '/dashboard/center' :
+-           role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/donor';
++    switch (this.role()) {
++      case 'ADMIN': return '/dashboard/admin';
++      case 'HOSPITAL': return '/dashboard/hospital';
++      case 'CENTER': return '/dashboard/center';
++      case 'DONOR': return '/dashboard/donor';
++      default: return '/';
++    }
+   }
+ }
+diff --git a/src/app/features/admin/admin-dashboard.component.html b/src/app/features/admin/admin-dashboard.component.html
+index a5ef5c0..384dcaa 100644
+--- a/src/app/features/admin/admin-dashboard.component.html
++++ b/src/app/features/admin/admin-dashboard.component.html
+@@ -1,5 +1,16 @@
+-<div class="container page"><div class="page-title"><div><h1>Administration</h1><p>Gestion globale de la plateforme.</p></div><button class="btn btn-primary">+ Nouvel utilisateur</button></div>
+-<div class="grid grid-4"><div class="card stat"><div><span>Utilisateurs</span><div class="number">3 854</div></div><div class="icon">👥</div></div><div class="card stat"><div><span>Hôpitaux</span><div class="number">24</div></div><div class="icon">🏥</div></div><div class="card stat"><div><span>Centres</span><div class="number">36</div></div><div class="icon">🩸</div></div><div class="card stat"><div><span>Alertes</span><div class="number">7</div></div><div class="icon">🔔</div></div></div>
+-<div class="section grid grid-3"><div class="card"><h3>👥 Utilisateurs</h3><p>Créer, modifier, activer ou désactiver les comptes.</p><button class="btn btn-secondary">Gérer</button></div><div class="card"><h3>🏥 Hôpitaux</h3><p>Gérer les établissements partenaires.</p><button class="btn btn-secondary">Gérer</button></div><div class="card"><h3>🩸 Centres</h3><p>Gérer les centres de collecte.</p><button class="btn btn-secondary">Gérer</button></div></div>
+-<div class="card section table-wrap"><h2>Utilisateurs récents</h2><table><thead><tr><th>Nom</th><th>Rôle</th><th>Statut</th><th>Action</th></tr></thead><tbody>@for(u of users;track u.name){<tr><td>{{u.name}}</td><td>{{u.role}}</td><td><span class="badge badge-success">{{u.status}}</span></td><td><button class="btn btn-secondary">Modifier</button></td></tr>}</tbody></table></div>
++<div class="container page">
++<div class="page-title"><div><h1>Administration</h1><p>Gestion globale de la plateforme.</p></div><button class="btn btn-primary" (click)="showForm=!showForm">+ Nouvel hôpital</button></div>
++
++@if(error){<div class="card section" style="border-left:4px solid var(--danger)">{{error}} <button class="btn btn-secondary" (click)="load()">Réessayer</button></div>}
++
++@if(showForm){<div class="card section"><h2>Nouvel hôpital</h2><p>Crée la fiche de l'hôpital. Il se connecte avec un compte Keycloak ayant <strong>le même email</strong> et le rôle <code>HOPITAL</code>.</p><form class="form-grid" (ngSubmit)="creerHopital()"><div class="form-group"><label>Nom</label><input [(ngModel)]="newHopital.nom" name="nom" required></div><div class="form-group"><label>Email</label><input type="email" [(ngModel)]="newHopital.email" name="email" required></div><div class="form-group"><label>Ville</label><input [(ngModel)]="newHopital.ville" name="ville"></div><div class="form-group"><label>Adresse</label><input [(ngModel)]="newHopital.adresse" name="adresse"></div><div class="form-group"><label>Type</label><select [(ngModel)]="newHopital.type" name="type"><option>Public</option><option>Privé</option><option>Universitaire</option></select></div><div class="form-group"><label>Capacité (lits)</label><input type="number" min="0" [(ngModel)]="newHopital.capaciteLits" name="capaciteLits"></div><div class="form-group full"><button class="btn btn-primary" [disabled]="saving">{{saving ? 'Création…' : 'Créer l\'hôpital'}}</button></div></form></div>}
++
++<div class="grid grid-4"><div class="card stat"><div><span>Utilisateurs</span><div class="number">{{users.length}}</div></div><div class="icon">👥</div></div><div class="card stat"><div><span>Hôpitaux</span><div class="number">{{nbHopitaux}}</div></div><div class="icon">🏥</div></div><div class="card stat"><div><span>Centres</span><div class="number">{{nbCentres}}</div></div><div class="icon">🩸</div></div><div class="card stat"><div><span>Demandes en attente</span><div class="number">{{nbEnAttente}}</div></div><div class="icon">🔔</div></div></div>
++
++<div class="section grid grid-3"><div class="card"><h3>👥 Utilisateurs</h3><p>Créer, modifier, activer ou désactiver les comptes.</p><button class="btn btn-secondary" (click)="filter='ALL'">Gérer</button></div><div class="card"><h3>🏥 Hôpitaux</h3><p>Gérer les établissements partenaires.</p><button class="btn btn-secondary" (click)="filter='HOPITAL'">Gérer</button></div><div class="card"><h3>🩸 Centres</h3><p>Gérer les centres de collecte.</p><button class="btn btn-secondary" (click)="filter='CENTRE_DON'">Gérer</button></div></div>
++<div class="card section table-wrap"><div class="section-head"><h2>Utilisateurs</h2><div>@for(f of filters;track f.value){<button class="btn" [class.btn-primary]="filter===f.value" [class.btn-secondary]="filter!==f.value" (click)="filter=f.value" style="margin-left:6px">{{f.label}}</button>}</div></div>
++@if(loading){<p>Chargement…</p>}
++@else if(filtered.length===0){<p>Aucun utilisateur.</p>}
++@else{<table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Action</th></tr></thead><tbody>@for(u of filtered;track u.id){<tr><td>{{u.nom}}</td><td>{{u.email}}</td><td><span class="badge badge-success">{{roleLabel(u.role)}}</span></td><td><button class="btn btn-secondary" (click)="supprimer(u)">Supprimer</button></td></tr>}</tbody></table>}
++</div>
+ </div>
+diff --git a/src/app/features/admin/admin-dashboard.component.ts b/src/app/features/admin/admin-dashboard.component.ts
+index 148df1d..bd7ef4c 100644
+--- a/src/app/features/admin/admin-dashboard.component.ts
++++ b/src/app/features/admin/admin-dashboard.component.ts
+@@ -1,5 +1,91 @@
+-import { Component } from '@angular/core';
+-@Component({standalone:true,templateUrl:'./admin-dashboard.component.html'})
+-export class AdminDashboardComponent {
+-  users=[{name:'Amine Ben Ali',role:'Donneur',status:'Actif'},{name:'Hôpital Charles Nicolle',role:'Hôpital',status:'Actif'},{name:'Centre Tunis',role:'Centre',status:'Actif'},{name:'Sara Trabelsi',role:'Donneur',status:'En attente'}];
++import { Component, OnInit } from '@angular/core';
++import { FormsModule } from '@angular/forms';
++import { catchError, forkJoin, of } from 'rxjs';
++import { AdminService } from './admin.service';
++import { BackendRole, Utilisateur } from '../../shared/models/backend.model';
++
++@Component({standalone:true,imports:[FormsModule],templateUrl:'./admin-dashboard.component.html'})
++export class AdminDashboardComponent implements OnInit {
++  loading = true;
++  error = '';
++  saving = false;
++  showForm = false;
++  filter: BackendRole | 'ALL' = 'ALL';
++
++  users: Utilisateur[] = [];
++  nbHopitaux = 0;
++  nbCentres = 0;
++  nbEnAttente = 0;
++
++  newHopital = { nom: '', email: '', ville: '', adresse: '', type: 'Public', capaciteLits: 100 };
++
++  readonly filters: { value: BackendRole | 'ALL'; label: string }[] = [
++    { value: 'ALL', label: 'Tous' },
++    { value: 'HOPITAL', label: 'Hôpitaux' },
++    { value: 'CENTRE_DON', label: 'Centres' },
++    { value: 'DONNEUR', label: 'Donneurs' },
++    { value: 'ADMIN', label: 'Admins' }
++  ];
++
++  constructor(private service: AdminService) {}
++
++  ngOnInit() { this.load(); }
++
++  load() {
++    this.loading = true;
++    this.error = '';
++    forkJoin({
++      users: this.service.utilisateurs(),
++      hopitaux: this.service.hopitaux(),
++      centres: this.service.centres().pipe(catchError(() => of([]))),
++      attente: this.service.demandesEnAttente().pipe(catchError(() => of([])))
++    }).subscribe({
++      next: r => {
++        this.users = r.users;
++        this.nbHopitaux = r.hopitaux.length;
++        this.nbCentres = r.centres.length;
++        this.nbEnAttente = r.attente.length;
++        this.loading = false;
++      },
++      error: () => { this.error = 'Impossible de charger les données (backend démarré ? rôle ADMIN ?).'; this.loading = false; }
++    });
++  }
++
++  get filtered() { return this.filter === 'ALL' ? this.users : this.users.filter(u => u.role === this.filter); }
++
++  roleLabel(r: BackendRole): string {
++    switch (r) {
++      case 'ADMIN': return 'Administrateur';
++      case 'HOPITAL': return 'Hôpital';
++      case 'CENTRE_DON': return 'Centre de don';
++      case 'DONNEUR': return 'Donneur';
++      default: return 'Utilisateur';
++    }
++  }
++
++  creerHopital() {
++    if (this.saving) return;
++    this.saving = true;
++    this.error = '';
++    this.service.creerHopital({ ...this.newHopital }).subscribe({
++      next: () => {
++        this.saving = false;
++        this.showForm = false;
++        this.newHopital = { nom: '', email: '', ville: '', adresse: '', type: 'Public', capaciteLits: 100 };
++        this.load();
++      },
++      error: e => {
++        this.saving = false;
++        this.error = e.status === 409 ? 'Cet email est déjà utilisé.' : "L'hôpital n'a pas pu être créé.";
++      }
++    });
++  }
++
++  supprimer(u: Utilisateur) {
++    if (!confirm(`Supprimer ${u.nom} (${u.email}) ?`)) return;
++    this.service.supprimerUtilisateur(u.id).subscribe({
++      next: () => this.load(),
++      error: () => this.error = "La suppression a échoué."
++    });
++  }
+ }
+diff --git a/src/app/features/admin/admin.service.ts b/src/app/features/admin/admin.service.ts
+index 23aa4f8..dd230c9 100644
+--- a/src/app/features/admin/admin.service.ts
++++ b/src/app/features/admin/admin.service.ts
+@@ -1,9 +1,17 @@
+ import { Injectable } from '@angular/core';
+-import { Observable, of } from 'rxjs';
++import { Observable } from 'rxjs';
++import { ApiService } from '../../core/services/api.service';
++import { CentreDeDon, DemandeDeSang, Hopital, Utilisateur } from '../../shared/models/backend.model';
+ 
+ @Injectable({providedIn:'root'})
+ export class AdminService {
+-  // Remplacer progressivement les données mockées par les appels Spring Boot.
+-  // Exemple : return this.api.get<Type>('/admin');
+-  list(): Observable<unknown[]> { return of([]); }
++  constructor(private api: ApiService) {}
++
++  utilisateurs(): Observable<Utilisateur[]> { return this.api.get<Utilisateur[]>('/utilisateurs'); }
++  hopitaux(): Observable<Hopital[]> { return this.api.get<Hopital[]>('/hopitaux'); }
++  centres(): Observable<CentreDeDon[]> { return this.api.get<CentreDeDon[]>('/centres'); }
++  demandesEnAttente(): Observable<DemandeDeSang[]> { return this.api.get<DemandeDeSang[]>('/demandes?statut=EN_ATTENTE'); }
++
++  creerHopital(h: Partial<Hopital>): Observable<Hopital> { return this.api.post<Hopital>('/hopitaux', h); }
++  supprimerUtilisateur(id: number): Observable<void> { return this.api.delete<void>(`/utilisateurs/${id}`); }
+ }
+diff --git a/src/app/features/auth/login/login.component.html b/src/app/features/auth/login/login.component.html
+index dc8ab8f..3af9f83 100644
+--- a/src/app/features/auth/login/login.component.html
++++ b/src/app/features/auth/login/login.component.html
+@@ -1 +1 @@
+-<div class="auth-page"><div class="auth-card card"><div class="auth-logo">♥</div><h1>Bienvenue</h1><p>Connectez-vous à votre espace BloodCare.</p>@if(error){<div class="error">{{error}}</div>}<form (ngSubmit)="submit()"><div class="form-group"><label>Email</label><input type="email" [(ngModel)]="email" name="email" required placeholder="vous@email.com"></div><div class="form-group"><label>Mot de passe</label><input type="password" [(ngModel)]="password" name="password" required placeholder="••••••••"></div><div class="form-group"><label>Type de compte</label><select [(ngModel)]="role" name="role"><option value="DONOR">Donneur</option><option value="HOSPITAL">Hôpital</option><option value="CENTER">Centre de don</option><option value="ADMIN">Administrateur</option></select></div><button class="btn btn-primary full" type="submit">Se connecter</button></form><p class="bottom">Pas encore de compte ? <a routerLink="/signup">Créer un compte</a></p></div></div>
++<div class="auth-page"><div class="auth-card card"><div class="auth-logo">♥</div><h1>Bienvenue</h1><p>Redirection vers la connexion sécurisée…</p><button class="btn btn-primary full" type="button" (click)="login()">Se connecter</button><p class="bottom">Pas encore de compte ? <a routerLink="/signup">En savoir plus</a></p></div></div>
+diff --git a/src/app/features/auth/login/login.component.ts b/src/app/features/auth/login/login.component.ts
+index a65242d..c83f358 100644
+--- a/src/app/features/auth/login/login.component.ts
++++ b/src/app/features/auth/login/login.component.ts
+@@ -1,12 +1,16 @@
+-import { Component } from '@angular/core';
+-import { FormsModule } from '@angular/forms';
++import { Component, OnInit } from '@angular/core';
+ import { Router, RouterLink } from '@angular/router';
+ import { AuthService } from '../../../core/services/auth.service';
+-import { UserRole } from '../../../shared/models/user.model';
+ 
+-@Component({standalone:true,imports:[FormsModule,RouterLink],templateUrl:'./login.component.html',styleUrl:'./login.component.css'})
+-export class LoginComponent {
+-  email=''; password=''; role:UserRole='DONOR'; error='';
++/** La saisie email / mot de passe est faite sur la page Keycloak : cette page y redirige. */
++@Component({standalone:true,imports:[RouterLink],templateUrl:'./login.component.html',styleUrl:'./login.component.css'})
++export class LoginComponent implements OnInit {
+   constructor(private auth:AuthService,private router:Router){}
+-  submit(){if(this.auth.login(this.email,this.password,this.role)){this.router.navigateByUrl(this.auth.dashboardLink())}else this.error='Veuillez remplir tous les champs.'}
++
++  ngOnInit(){
++    if(this.auth.isLoggedIn()) this.router.navigateByUrl(this.auth.dashboardLink());
++    else this.login();
++  }
++
++  login(){ this.auth.login('/dashboard'); }
+ }
+diff --git a/src/app/features/auth/signup/signup.component.html b/src/app/features/auth/signup/signup.component.html
+index 28e5423..a50a3db 100644
+--- a/src/app/features/auth/signup/signup.component.html
++++ b/src/app/features/auth/signup/signup.component.html
+@@ -1 +1 @@
+-<div class="auth-page"><div class="auth-card card"><div class="auth-logo">♥</div><h1>Créer un compte</h1><p>Choisissez votre rôle sur la plateforme.</p><form (ngSubmit)="submit()"><div class="form-grid"><div class="form-group"><label>Prénom</label><input [(ngModel)]="firstName" name="firstName" required></div><div class="form-group"><label>Nom</label><input [(ngModel)]="lastName" name="lastName" required></div></div><div class="form-group"><label>Email</label><input type="email" [(ngModel)]="email" name="email" required></div><div class="form-group"><label>Mot de passe</label><input type="password" [(ngModel)]="password" name="password" required></div><div class="form-group"><label>Type de compte</label><select [(ngModel)]="role" name="role"><option value="DONOR">Donneur</option><option value="HOSPITAL">Hôpital</option><option value="CENTER">Centre de don</option></select></div><button class="btn btn-primary full">Créer mon compte</button></form><p class="bottom">Déjà inscrit ? <a routerLink="/login">Se connecter</a></p></div></div>
++<div class="auth-page"><div class="auth-card card"><div class="auth-logo">♥</div><h1>Créer un compte</h1><p>Devenez <strong>donneur</strong> en quelques secondes.</p><button class="btn btn-primary full" type="button" (click)="auth.register()">Créer mon compte donneur</button><p class="bottom">Hôpital ou centre de don ? Les comptes sont créés par l'administrateur — <a routerLink="/contact">contactez-nous</a>.</p><p class="bottom">Déjà inscrit ? <a href="javascript:void(0)" (click)="auth.login()">Se connecter</a></p></div></div>
+diff --git a/src/app/features/auth/signup/signup.component.ts b/src/app/features/auth/signup/signup.component.ts
+index 0f87bbe..23b4678 100644
+--- a/src/app/features/auth/signup/signup.component.ts
++++ b/src/app/features/auth/signup/signup.component.ts
+@@ -1,12 +1,12 @@
+ import { Component } from '@angular/core';
+-import { FormsModule } from '@angular/forms';
+-import { Router, RouterLink } from '@angular/router';
++import { RouterLink } from '@angular/router';
+ import { AuthService } from '../../../core/services/auth.service';
+-import { UserRole } from '../../../shared/models/user.model';
+ 
+-@Component({standalone:true,imports:[FormsModule,RouterLink],templateUrl:'./signup.component.html',styleUrl:'./signup.component.css'})
++/**
++ * L'inscription est faite sur Keycloak. Un compte créé ici est un compte Donneur.
++ * Les comptes Hôpital / Centre de don / Administrateur sont créés par l'administrateur.
++ */
++@Component({standalone:true,imports:[RouterLink],templateUrl:'./signup.component.html',styleUrl:'./signup.component.css'})
+ export class SignupComponent {
+-  firstName='';lastName='';email='';password='';role:UserRole='DONOR';
+-  constructor(private auth:AuthService,private router:Router){}
+-  submit(){if(this.firstName&&this.lastName&&this.email&&this.password){this.auth.signup(this.firstName,this.lastName,this.email,this.role);this.router.navigateByUrl(this.auth.dashboardLink())}}
++  constructor(public auth:AuthService){}
+ }
+diff --git a/src/app/features/hospital/hospital-dashboard.component.html b/src/app/features/hospital/hospital-dashboard.component.html
+index 47e6035..d7c3a34 100644
+--- a/src/app/features/hospital/hospital-dashboard.component.html
++++ b/src/app/features/hospital/hospital-dashboard.component.html
+@@ -1,6 +1,17 @@
+ <div class="container page">
+-<div class="page-title"><div><h1>Espace Hôpital</h1><p>Suivez vos demandes de sang et notifications.</p></div><button class="btn btn-primary" (click)="showForm=!showForm">+ Nouvelle demande</button></div>
+-@if(showForm){<div class="card section"><h2>Nouvelle demande de sang</h2><form class="form-grid" (ngSubmit)="submit()"><div class="form-group"><label>Groupe sanguin</label><select [(ngModel)]="request.bloodType" name="bloodType"><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div><div class="form-group"><label>Quantité (poches)</label><input type="number" [(ngModel)]="request.quantity" name="quantity"></div><div class="form-group"><label>Urgence</label><select [(ngModel)]="request.urgency" name="urgency"><option>NORMAL</option><option>URGENT</option><option>CRITICAL</option></select></div><div class="form-group"><label>Notes</label><input [(ngModel)]="request.notes" name="notes"></div><div class="form-group full"><button class="btn btn-primary">Envoyer la demande</button></div></form></div>}
+-<div class="grid grid-4"><div class="card stat"><div><span>Demandes</span><div class="number">24</div></div><div class="icon">📋</div></div><div class="card stat"><div><span>En attente</span><div class="number">5</div></div><div class="icon">⏳</div></div><div class="card stat"><div><span>Traitées</span><div class="number">17</div></div><div class="icon">✓</div></div><div class="card stat"><div><span>Notifications</span><div class="number">3</div></div><div class="icon">🔔</div></div></div>
+-<div class="card section table-wrap"><div class="section-head"><h2>Mes demandes</h2></div><table><thead><tr><th>#</th><th>Hôpital</th><th>Groupe</th><th>Quantité</th><th>Statut</th></tr></thead><tbody>@for(r of requests;track r.id){<tr><td>#{{r.id}}</td><td>{{r.hospital}}</td><td>{{r.type}}</td><td>{{r.quantity}}</td><td><span class="badge badge-warning">{{r.status}}</span></td></tr>}</tbody></table></div>
++<div class="page-title"><div><h1>Espace Hôpital</h1><p>{{hopital?.nom ?? 'Chargement…'}} — suivez vos demandes de sang et notifications.</p></div><button class="btn btn-primary" (click)="showForm=!showForm" [disabled]="!hopital">+ Nouvelle demande</button></div>
++
++@if(error){<div class="card section" style="border-left:4px solid var(--danger)">{{error}} <button class="btn btn-secondary" (click)="load()">Réessayer</button></div>}
++
++@if(showForm){<div class="card section"><h2>Nouvelle demande de sang</h2><form class="form-grid" (ngSubmit)="submit()"><div class="form-group"><label>Groupe sanguin</label><select [(ngModel)]="request.groupeSanguin" name="groupeSanguin"><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div><div class="form-group"><label>Quantité (poches)</label><input type="number" min="1" [(ngModel)]="request.quantite" name="quantite" required></div><div class="form-group"><label>Urgence</label><select [(ngModel)]="request.urgence" name="urgence"><option>NORMAL</option><option>URGENT</option><option>CRITICAL</option></select></div><div class="form-group"><label>Motif</label><input [(ngModel)]="request.motif" name="motif"></div><div class="form-group full"><button class="btn btn-primary" [disabled]="saving">{{saving ? 'Envoi…' : 'Envoyer la demande'}}</button></div></form></div>}
++
++<div class="grid grid-4"><div class="card stat"><div><span>Demandes</span><div class="number">{{total}}</div></div><div class="icon">📋</div></div><div class="card stat"><div><span>En attente</span><div class="number">{{enAttente}}</div></div><div class="icon">⏳</div></div><div class="card stat"><div><span>Traitées</span><div class="number">{{traitees}}</div></div><div class="icon">✓</div></div><div class="card stat"><div><span>Notifications</span><div class="number">{{nonLues}}</div></div><div class="icon">🔔</div></div></div>
++
++<div class="card section table-wrap"><div class="section-head"><h2>Mes demandes</h2></div>
++@if(loading){<p>Chargement…</p>}
++@else if(demandes.length===0){<p>Aucune demande pour le moment.</p>}
++@else{<table><thead><tr><th>#</th><th>Date</th><th>Groupe</th><th>Quantité</th><th>Urgence</th><th>Statut</th></tr></thead><tbody>@for(d of demandes;track d.id){<tr><td>#{{d.id}}</td><td>{{d.dateCreation | date:'dd/MM/yyyy'}}</td><td>{{d.groupeSanguin}}</td><td>{{d.quantite}}</td><td>{{d.urgence}}</td><td><span class="badge" [class]="'badge '+statutClass(d.statut)">{{statutLabel(d.statut)}}</span></td></tr>}</tbody></table>}
++</div>
++
++@if(notifications.length>0){<div class="card section"><h2>Notifications</h2>@for(n of notifications;track n.id){<p [style.font-weight]="n.lu ? 'normal' : '700'">{{n.date | date:'dd/MM/yyyy'}} — {{n.message}}</p>}</div>}
+ </div>
+diff --git a/src/app/features/hospital/hospital-dashboard.component.ts b/src/app/features/hospital/hospital-dashboard.component.ts
+index 8d52a35..35bbab4 100644
+--- a/src/app/features/hospital/hospital-dashboard.component.ts
++++ b/src/app/features/hospital/hospital-dashboard.component.ts
+@@ -1,15 +1,84 @@
+-import { Component } from '@angular/core';
++import { Component, OnInit } from '@angular/core';
++import { DatePipe } from '@angular/common';
+ import { FormsModule } from '@angular/forms';
+-import { RouterLink } from '@angular/router';
+-
+-@Component({standalone:true,imports:[FormsModule,RouterLink],templateUrl:'./hospital-dashboard.component.html'})
+-export class HospitalDashboardComponent {
+-  showForm=false;
+-  request={bloodType:'O+',quantity:2,urgency:'URGENT',notes:''};
+-  requests=[
+-    {id:104,hospital:'Hôpital Charles Nicolle',type:'O-',quantity:4,status:'EN ATTENTE'},
+-    {id:103,hospital:'Hôpital La Rabta',type:'A+',quantity:2,status:'TRAITÉE'},
+-    {id:102,hospital:'Hôpital Mongi Slim',type:'B+',quantity:3,status:'EN COURS'}
+-  ];
+-  submit(){this.showForm=false;alert('Demande enregistrée (mode template).')}
++import { catchError, forkJoin, of } from 'rxjs';
++import { HospitalService } from './hospital.service';
++import { DemandeDeSang, Hopital, NotificationDto } from '../../shared/models/backend.model';
++
++@Component({standalone:true,imports:[FormsModule,DatePipe],templateUrl:'./hospital-dashboard.component.html'})
++export class HospitalDashboardComponent implements OnInit {
++  loading = true;
++  error = '';
++  saving = false;
++  showForm = false;
++
++  hopital: Hopital | null = null;
++  demandes: DemandeDeSang[] = [];
++  notifications: NotificationDto[] = [];
++
++  request = { groupeSanguin: 'O+', quantite: 2, urgence: 'URGENT', motif: '' };
++
++  constructor(private service: HospitalService) {}
++
++  ngOnInit() { this.load(); }
++
++  load() {
++    this.loading = true;
++    this.error = '';
++    this.service.me().subscribe({
++      next: me => {
++        this.hopital = me;
++        forkJoin({
++          demandes: this.service.demandes(me.id),
++          notifications: this.service.notifications().pipe(catchError(() => of([] as NotificationDto[])))
++        }).subscribe({
++          next: r => {
++            // les plus récentes d'abord
++            this.demandes = [...r.demandes].sort((a, b) => b.id - a.id);
++            this.notifications = r.notifications;
++            this.loading = false;
++          },
++          error: () => this.fail('Impossible de charger les demandes.')
++        });
++      },
++      error: () => this.fail('Impossible de charger votre profil (le backend est-il démarré ?).')
++    });
++  }
++
++  submit() {
++    if (!this.hopital || this.saving) return;
++    this.saving = true;
++    this.error = '';
++    this.service.envoyerDemande(this.hopital.id, { ...this.request }).subscribe({
++      next: created => {
++        this.demandes = [created, ...this.demandes];
++        this.showForm = false;
++        this.saving = false;
++        this.request = { groupeSanguin: 'O+', quantite: 2, urgence: 'URGENT', motif: '' };
++      },
++      error: () => { this.saving = false; this.error = "La demande n'a pas pu être envoyée."; }
++    });
++  }
++
++  get total() { return this.demandes.length; }
++  get enAttente() { return this.demandes.filter(d => d.statut === 'EN_ATTENTE').length; }
++  get traitees() { return this.demandes.filter(d => d.statut !== 'EN_ATTENTE').length; }
++  get nonLues() { return this.notifications.filter(n => !n.lu).length; }
++
++  statutLabel(s: string): string {
++    switch (s) {
++      case 'EN_ATTENTE': return 'EN ATTENTE';
++      case 'ACCEPTEE': return 'ACCEPTÉE';
++      case 'REFUSEE': return 'REFUSÉE';
++      default: return s.replace(/_/g, ' ');
++    }
++  }
++
++  statutClass(s: string): string {
++    if (s === 'EN_ATTENTE') return 'badge-warning';
++    if (s === 'REFUSEE') return 'badge-danger';
++    return 'badge-success';
++  }
++
++  private fail(msg: string) { this.error = msg; this.loading = false; }
+ }
+diff --git a/src/app/features/hospital/hospital.service.ts b/src/app/features/hospital/hospital.service.ts
+index 741fa75..854212e 100644
+--- a/src/app/features/hospital/hospital.service.ts
++++ b/src/app/features/hospital/hospital.service.ts
+@@ -1,9 +1,24 @@
+ import { Injectable } from '@angular/core';
+-import { Observable, of } from 'rxjs';
++import { Observable } from 'rxjs';
++import { ApiService } from '../../core/services/api.service';
++import { DemandeDeSang, Hopital, NotificationDto, NouvelleDemande } from '../../shared/models/backend.model';
+ 
+ @Injectable({providedIn:'root'})
+ export class HospitalService {
+-  // Remplacer progressivement les données mockées par les appels Spring Boot.
+-  // Exemple : return this.api.get<Type>('/hospital');
+-  list(): Observable<unknown[]> { return of([]); }
++  constructor(private api: ApiService) {}
++
++  /** Fiche de l'hôpital connecté (GET /api/me) -> contient l'id utilisé ensuite. */
++  me(): Observable<Hopital> { return this.api.get<Hopital>('/me'); }
++
++  demandes(hopitalId: number): Observable<DemandeDeSang[]> {
++    return this.api.get<DemandeDeSang[]>(`/hopitaux/${hopitalId}/demandes`);
++  }
++
++  envoyerDemande(hopitalId: number, demande: NouvelleDemande): Observable<DemandeDeSang> {
++    return this.api.post<DemandeDeSang>(`/hopitaux/${hopitalId}/demandes`, demande);
++  }
++
++  notifications(): Observable<NotificationDto[]> {
++    return this.api.get<NotificationDto[]>('/me/notifications');
++  }
+ }
+diff --git a/src/app/shared/models/backend.model.ts b/src/app/shared/models/backend.model.ts
+new file mode 100644
+index 0000000..76b7742
+--- /dev/null
++++ b/src/app/shared/models/backend.model.ts
+@@ -0,0 +1,52 @@
++/** Modèles qui reflètent les entités JSON renvoyées par Spring Boot. */
++
++export type BackendRole = 'ADMIN' | 'HOPITAL' | 'CENTRE_DON' | 'DONNEUR' | 'UTILISATEUR';
++
++export interface Utilisateur {
++  id: number;
++  nom: string;
++  email: string;
++  role: BackendRole;
++}
++
++export interface Hopital extends Utilisateur {
++  adresse?: string;
++  ville?: string;
++  type?: string;
++  capaciteLits?: number;
++}
++
++export interface CentreDeDon extends Utilisateur {
++  adresse?: string;
++  ville?: string;
++  capaciteStock?: number;
++  horaires?: string;
++}
++
++export interface DemandeDeSang {
++  id: number;
++  dateCreation: string;
++  groupeSanguin: string;
++  composant?: string;
++  quantite: number;
++  urgence: string;
++  motif?: string;
++  statut: string;
++  unitesFournies?: number;
++}
++
++export interface NouvelleDemande {
++  groupeSanguin: string;
++  quantite: number;
++  urgence: string;
++  motif?: string;
++  composant?: string;
++}
++
++export interface NotificationDto {
++  id: number;
++  message: string;
++  date: string;
++  type?: string;
++  lu: boolean;
++}
+diff --git a/src/app/shared/models/user.model.ts b/src/app/shared/models/user.model.ts
+index 99ee466..b77208f 100644
+--- a/src/app/shared/models/user.model.ts
++++ b/src/app/shared/models/user.model.ts
+@@ -1,7 +1,7 @@
+ export type UserRole = 'DONOR' | 'HOSPITAL' | 'CENTER' | 'ADMIN';
+ 
+ export interface User {
+-  id: number;
++  id?: number;            // id en base (disponible via GET /api/me)
+   firstName: string;
+   lastName: string;
+   email: string;
+diff --git a/src/silent-check-sso.html b/src/silent-check-sso.html
+new file mode 100644
+index 0000000..2a346c2
+--- /dev/null
++++ b/src/silent-check-sso.html
+@@ -0,0 +1 @@
++<html><body><script>parent.postMessage(location.href, location.origin);</script></body></html>
