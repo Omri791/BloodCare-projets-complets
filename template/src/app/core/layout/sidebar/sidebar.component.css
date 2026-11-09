@@ -1,0 +1,20 @@
+.sidebar { position:sticky; top:96px; background:var(--white); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); padding:16px 12px; display:flex; flex-direction:column; gap:12px; }
+.head { display:flex; align-items:center; gap:11px; padding:4px 8px 14px; border-bottom:1px solid var(--border); }
+.avatar { width:40px; height:40px; flex:none; display:grid; place-items:center; background:var(--primary); color:white; border-radius:12px; font:700 17px "Syne"; }
+.role { display:block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--primary); }
+.name { display:block; font:700 15px "Syne"; line-height:1.25; }
+nav { display:flex; flex-direction:column; gap:3px; }
+.item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:11px; color:#56616b; font-size:14px; font-weight:600; }
+.item:hover { background:#f6f7f9; color:var(--text); }
+.item.active { background:var(--primary-soft); color:var(--primary); }
+.count { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:999px; background:var(--primary); color:white; font-size:11px; font-weight:700; text-align:center; }
+.logout { margin-top:4px; padding:12px 12px 4px; border:0; border-top:1px solid var(--border); background:none; color:#56616b; font-weight:600; font-size:14px; text-align:left; }
+.logout:hover { color:var(--primary); }
+
+/* Mobile : le menu devient une barre d'onglets défilante */
+@media (max-width:850px) {
+  .sidebar { position:static; padding:8px; }
+  .head, .logout { display:none; }
+  nav { flex-direction:row; overflow-x:auto; }
+  .item { white-space:nowrap; }
+}

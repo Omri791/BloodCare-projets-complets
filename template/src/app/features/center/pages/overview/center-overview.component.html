@@ -1,0 +1,50 @@
+<div class="page-title">
+  <div><h1>Vue d'ensemble</h1><p>{{store.centre?.nom ?? 'Chargement…'}} — stock, demandes, donneurs et rendez-vous.</p></div>
+  <a class="btn btn-primary" routerLink="/dashboard/center/appels">Lancer un appel</a>
+</div>
+
+<div class="grid grid-4">
+  <app-stat-card label="Stock total" [value]="store.stockTotal" />
+  <app-stat-card label="Donneurs" [value]="store.donneurs.length" />
+  <app-stat-card label="Rendez-vous à venir" [value]="store.rdvAVenir" />
+  <app-stat-card label="Demandes en attente" [value]="store.enAttente" />
+</div>
+
+<div class="section grid grid-2">
+  <div class="card">
+    <div class="section-head"><h2>Alertes stock</h2><a class="btn btn-secondary btn-sm" routerLink="/dashboard/center/stock">Voir le stock</a></div>
+    @if (stocksBas.length === 0) { <p class="muted">Tous les groupes sont à un niveau normal.</p> }
+    @for (s of stocksBas; track s.groupe) {
+      <div class="item-row actions" style="justify-content:space-between">
+        <span><span class="blood-type">{{s.groupe}}</span> · {{s.quantite}} poche(s)</span>
+        <span class="badge" [class.badge-danger]="s.niveau==='Critique'" [class.badge-warning]="s.niveau==='Faible'">{{s.niveau}}</span>
+      </div>
+    }
+  </div>
+
+  <div class="card">
+    <div class="section-head"><h2>Demandes en attente</h2><a class="btn btn-secondary btn-sm" routerLink="/dashboard/center/demandes">Tout voir</a></div>
+    @if (store.loading) { <p>Chargement…</p> }
+    @else if (demandesEnAttente.length === 0) { <p class="muted">Aucune demande en attente.</p> }
+    @for (d of demandesEnAttente; track d.id) {
+      <div class="item-row">
+        <strong>#{{d.id}} · {{d.hopital?.nom ?? 'Hôpital'}}</strong>
+        <div class="muted">{{d.groupeSanguin}} · {{d.quantite}} poches · <span class="badge" [class]="'badge ' + urgenceClass(d.urgence)">{{d.urgence}}</span></div>
+      </div>
+    }
+  </div>
+</div>
+
+<div class="card section">
+  <div class="section-head"><h2>Prochains rendez-vous</h2><a class="btn btn-secondary btn-sm" routerLink="/dashboard/center/rendez-vous">Gérer</a></div>
+  @if (prochainsRdv.length === 0) { <p class="muted">Aucun rendez-vous à venir.</p> }
+  @for (r of prochainsRdv; track r.id) {
+    <div class="item-row"><strong>{{r.date | date:'dd/MM/yyyy HH:mm'}}</strong> — {{r.donneur?.nom}} <span class="muted">({{r.donneur?.groupeSanguin ?? '—'}})</span></div>
+  }
+</div>
+
+<div class="section grid grid-3">
+  <div class="card"><h3>Donneurs</h3><p>Gérer les profils, disponibilités et historique.</p><a class="btn btn-secondary" routerLink="/dashboard/center/donneurs">Gérer les donneurs</a></div>
+  <div class="card"><h3>Créneaux</h3><p>{{store.creneauxLibres}} créneau(x) libre(s) à venir.</p><a class="btn btn-secondary" routerLink="/dashboard/center/creneaux">Gérer les créneaux</a></div>
+  <div class="card"><h3>Prédiction ML</h3><p>Anticiper les besoins en sang par groupe.</p><button class="btn btn-primary" disabled>Bientôt disponible</button></div>
+</div>

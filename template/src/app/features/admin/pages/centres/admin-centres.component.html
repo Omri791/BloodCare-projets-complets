@@ -1,0 +1,18 @@
+<div class="page-title">
+  <div><h1>Centres de don</h1><p>Centres de collecte inscrits sur la plateforme.</p></div>
+</div>
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.centres.length === 0) { <p class="muted">Aucun centre.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Nom</th><th>Email</th><th>Ville</th><th>Adresse</th><th>Capacité (poches)</th><th>Horaires</th></tr></thead>
+      <tbody>
+        @for (c of store.centres; track c.id) {
+          <tr><td><strong>{{c.nom}}</strong></td><td>{{c.email}}</td><td>{{c.ville ?? '—'}}</td><td>{{c.adresse ?? '—'}}</td><td>{{c.capaciteStock ?? '—'}}</td><td>{{c.horaires ?? '—'}}</td></tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

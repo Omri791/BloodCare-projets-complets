@@ -1,0 +1,19 @@
+<div class="page-title">
+  <div><h1>Dons enregistrés</h1><p>Chaque don enregistré ajoute une poche au stock du centre.</p></div>
+  <span class="badge badge-neutral">{{store.dons.length}} don(s)</span>
+</div>
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.dons.length === 0) { <p class="muted">Aucun don enregistré pour le moment.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Date du don</th><th>Donneur</th><th>Groupe</th><th>Quantité</th></tr></thead>
+      <tbody>
+        @for (r of store.dons; track r.id) {
+          <tr><td>{{r.don?.dateDon | date:'dd/MM/yyyy'}}</td><td>{{r.donneur?.nom}}</td><td>{{r.donneur?.groupeSanguin}}</td><td>{{r.don?.quantite}} ml</td></tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

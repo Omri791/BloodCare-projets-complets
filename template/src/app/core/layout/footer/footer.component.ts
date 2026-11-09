@@ -6,7 +6,7 @@ import { Component } from '@angular/core';
   template: `
     <footer>
       <div class="footer-grid">
-        <div><h3><span>♥</span> BloodCare</h3><p>Une plateforme digitale pour faciliter la gestion des dons de sang et connecter donneurs, centres et hôpitaux.</p></div>
+        <div><h3>BloodCare</h3><p>Une plateforme digitale pour faciliter la gestion des dons de sang et connecter donneurs, centres et hôpitaux.</p></div>
         <div><h4>Plateforme</h4><p>Dons de sang</p><p>Articles santé</p><p>Centres de don</p></div>
         <div><h4>Contact</h4><p>+216 71 000 000</p><p>contact@bloodcare.tn</p><p>Tunis, Tunisie</p></div>
       </div>

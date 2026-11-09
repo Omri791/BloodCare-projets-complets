@@ -1,0 +1,17 @@
+<div class="page-title">
+  <div><h1>Administration</h1><p>Gestion globale de la plateforme.</p></div>
+  <a class="btn btn-primary" routerLink="/dashboard/admin/hopitaux" [queryParams]="{ nouveau: 1 }">+ Nouvel hôpital</a>
+</div>
+
+<div class="grid grid-4">
+  <app-stat-card label="Utilisateurs" [value]="store.users.length" />
+  <app-stat-card label="Hôpitaux" [value]="store.hopitaux.length" />
+  <app-stat-card label="Centres" [value]="store.centres.length" />
+  <app-stat-card label="Demandes en attente" [value]="store.demandesEnAttente.length" />
+</div>
+
+<div class="section grid grid-3">
+  <div class="card"><h3>Utilisateurs</h3><p>Consulter et supprimer les comptes.</p><a class="btn btn-secondary" routerLink="/dashboard/admin/utilisateurs">Gérer</a></div>
+  <div class="card"><h3>Hôpitaux</h3><p>Gérer les établissements partenaires.</p><a class="btn btn-secondary" routerLink="/dashboard/admin/hopitaux">Gérer</a></div>
+  <div class="card"><h3>Centres</h3><p>Consulter les centres de collecte.</p><a class="btn btn-secondary" routerLink="/dashboard/admin/centres">Gérer</a></div>
+</div>

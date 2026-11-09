@@ -63,8 +63,24 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/hopitaux/*/patients").hasAnyRole("ADMIN", "HOPITAL")
                         .requestMatchers("/api/hopitaux/*/demandes").hasAnyRole("ADMIN", "HOPITAL")
 
-                        // --- Centre de don : à compléter par le collègue en charge ---
-                        // --- Donneur : à compléter par le collègue en charge ---
+                        // --- Centre de don ---
+                        // Demandes, rendez-vous et dons : l'admin OU le centre concerné
+                        // (le "est-ce bien mon centre ?" est vérifié par @PreAuthorize dans CentreDeDonController)
+                        .requestMatchers(HttpMethod.GET, "/api/centres/*/stocks").hasAnyRole("ADMIN", "CENTRE_DON")
+                        .requestMatchers(HttpMethod.PUT, "/api/centres/*/stocks").hasAnyRole("ADMIN", "CENTRE_DON")
+                        .requestMatchers("/api/centres/*/demandes", "/api/centres/*/demandes/*").hasAnyRole("ADMIN", "CENTRE_DON")
+                        .requestMatchers("/api/centres/*/rendez-vous", "/api/centres/*/rendez-vous/**").hasAnyRole("ADMIN", "CENTRE_DON")
+                        .requestMatchers("/api/centres/*/creneaux", "/api/centres/*/creneaux/*", "/api/centres/*/appels").hasAnyRole("ADMIN", "CENTRE_DON")
+                        // Le centre consulte la liste des donneurs
+                        .requestMatchers(HttpMethod.GET, "/api/donneurs", "/api/donneurs/disponibles").hasAnyRole("ADMIN", "CENTRE_DON")
+
+                        // --- Donneur ---
+                        // (le "est-ce bien moi ?" est vérifié par @PreAuthorize dans DonneurController)
+                        .requestMatchers(HttpMethod.GET, "/api/centres").hasAnyRole("ADMIN", "CENTRE_DON", "DONNEUR")
+                        .requestMatchers(HttpMethod.PUT, "/api/donneurs/*/profil").hasAnyRole("ADMIN", "DONNEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/donneurs/*/eligibilite", "/api/donneurs/*/historique").hasAnyRole("ADMIN", "CENTRE_DON", "DONNEUR")
+                        .requestMatchers("/api/donneurs/*/rendez-vous", "/api/donneurs/*/rendez-vous/**").hasAnyRole("ADMIN", "CENTRE_DON", "DONNEUR")
+                        .requestMatchers("/api/donneurs/*/appels", "/api/donneurs/*/appels/**").hasAnyRole("ADMIN", "DONNEUR")
 
                         // Tout le reste de l'API : administrateur uniquement (pour l'instant)
                         .requestMatchers("/api/**").hasRole("ADMIN")

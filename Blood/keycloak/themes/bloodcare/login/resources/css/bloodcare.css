@@ -1,0 +1,318 @@
+/* ==========================================================================
+   Thème BloodCare pour les pages Keycloak (connexion, inscription, mot de passe oublié...)
+   Mêmes couleurs, polices et formes que l'application Angular (src/styles.css).
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+
+/* L'application n'a pas de mode sombre : on garde le thème clair même si le système est en sombre */
+:root,
+:root.pf-v5-theme-dark {
+  --bc-primary: #c62828;
+  --bc-primary-dark: #8e1b1b;
+  --bc-primary-soft: #fff1f1;
+  --bc-text: #17202a;
+  --bc-muted: #68737d;
+  --bc-border: #e8eaed;
+  --bc-bg: #f7f8fa;
+  --bc-danger: #b42318;
+  --bc-success: #16824a;
+  --bc-shadow: 0 10px 35px rgba(24, 35, 45, .08);
+
+  --pf-v5-global--FontFamily--text: "DM Sans", sans-serif;
+  --pf-v5-global--FontFamily--heading: "Syne", sans-serif;
+  --pf-v5-global--primary-color--100: var(--bc-primary);
+  --pf-v5-global--primary-color--200: var(--bc-primary-dark);
+  --pf-v5-global--link--Color: var(--bc-primary);
+  --pf-v5-global--link--Color--hover: var(--bc-primary-dark);
+  --pf-v5-global--Color--100: var(--bc-text);
+  --pf-v5-global--Color--200: var(--bc-muted);
+  --pf-v5-global--BackgroundColor--100: #fff;
+  --pf-v5-global--BackgroundColor--200: var(--bc-bg);
+  --pf-v5-global--BorderColor--100: var(--bc-border);
+  --pf-v5-global--danger-color--100: var(--bc-danger);
+  --pf-v5-global--success-color--100: var(--bc-success);
+  color-scheme: light;
+}
+
+/* ---------- Fond de page ---------- */
+html.login-pf body,
+.login-pf body,
+body#keycloak-bg {
+  background: radial-gradient(circle at 12% 10%, #ffe3e3 0, transparent 38%),
+              radial-gradient(circle at 90% 90%, #ffecec 0, transparent 35%),
+              var(--bc-bg) !important;
+  color: var(--bc-text);
+  font-family: "DM Sans", sans-serif;
+  min-height: 100vh;
+}
+
+.pf-v5-c-login {
+  background: transparent !important;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.pf-v5-c-login__container {
+  grid-template-columns: minmax(0, 30rem) !important;
+  justify-content: center;
+}
+
+/* ---------- Logo "♥ BloodCare" (même rendu que la barre de navigation) ---------- */
+#kc-header {
+  margin-bottom: 22px;
+}
+
+#kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font: 700 26px "Syne", sans-serif !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--bc-text) !important;
+}
+
+#kc-header-wrapper::before {
+  content: "♥";
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: var(--bc-primary);
+  color: #fff;
+  border-radius: 13px;
+  font-size: 20px;
+  margin-right: 10px;
+  box-shadow: 0 8px 20px rgba(198, 40, 40, .25);
+}
+
+#kc-header-wrapper strong {
+  color: var(--bc-primary);
+  font-weight: 800;
+}
+
+/* ---------- Carte ---------- */
+.pf-v5-c-login__main {
+  background: #fff !important;
+  border: 1px solid var(--bc-border);
+  border-radius: 18px;
+  box-shadow: var(--bc-shadow);
+  overflow: hidden;
+}
+
+.pf-v5-c-login__main-header {
+  padding-top: 32px !important;
+}
+
+div.pf-v5-c-login__main-header {
+  grid-template-columns: 1fr auto !important;
+  align-items: center;
+  gap: 12px;
+}
+
+#kc-page-title {
+  font: 800 23px "Syne", sans-serif !important;
+  line-height: 1.25;
+  color: var(--bc-text);
+}
+
+.pf-v5-c-login__main-body {
+  padding-bottom: 28px;
+}
+
+/* ---------- Champs ---------- */
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  color: var(--bc-text);
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BorderRadius: 10px;
+  --pf-v5-c-form-control--before--BorderColor: var(--bc-border);
+  --pf-v5-c-form-control--after--BorderColor: transparent;
+  --pf-v5-c-form-control--hover--after--BorderColor: transparent;
+  --pf-v5-c-form-control--focus--after--BorderColor: transparent;
+  background: #fff !important;
+  border-radius: 10px !important;
+  transition: box-shadow .15s, border-color .15s;
+}
+
+.pf-v5-c-form-control::before {
+  border: 1px solid var(--bc-border) !important;
+  border-radius: 10px !important;
+}
+
+.pf-v5-c-form-control::after {
+  display: none !important;
+}
+
+.pf-v5-c-form-control:focus-within {
+  box-shadow: 0 0 0 4px rgba(198, 40, 40, .1);
+}
+
+.pf-v5-c-form-control:focus-within::before {
+  border-color: #d85c5c !important;
+}
+
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea {
+  color: var(--bc-text) !important;
+  padding: 11px 13px !important;
+}
+
+/* Inscription : l'<input> porte aussi la classe pf-v5-c-form-control ; il doit rester transparent
+   sinon il recouvre la bordure de son cadre */
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > .pf-v5-c-form-control {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-form-control > .pf-v5-c-form-control::before {
+  display: none !important;
+}
+
+.pf-v5-c-form-control > input:focus,
+.pf-v5-c-form-control > select:focus,
+.pf-v5-c-form-control > textarea:focus {
+  outline: none !important;
+}
+
+/* Mot de passe : champ + bouton "œil" collés */
+.pf-v5-c-input-group .pf-v5-c-form-control,
+.pf-v5-c-input-group .pf-v5-c-form-control::before {
+  border-radius: 10px 0 0 10px !important;
+}
+
+/* Champ en erreur */
+.pf-v5-c-form-control.pf-m-error::before {
+  border-color: var(--bc-danger) !important;
+}
+
+.pf-v5-c-helper-text__item-text.pf-m-error,
+.kc-feedback-text {
+  color: var(--bc-danger) !important;
+}
+
+/* Bouton "afficher le mot de passe" */
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control {
+  border-radius: 0 10px 10px 0;
+  color: var(--bc-muted);
+}
+
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control::after {
+  border-color: var(--bc-border) !important;
+}
+
+/* Cases à cocher */
+.pf-v5-c-check__input {
+  accent-color: var(--bc-primary);
+}
+
+/* ---------- Boutons ---------- */
+.pf-v5-c-button {
+  font-family: "DM Sans", sans-serif;
+  font-weight: 700 !important;
+  border-radius: 11px !important;
+}
+
+.pf-v5-c-button.pf-m-primary {
+  background: var(--bc-primary) !important;
+  color: #fff !important;
+  padding: 12px 17px !important;
+  transition: background .2s, transform .1s;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background: var(--bc-primary-dark) !important;
+}
+
+.pf-v5-c-button.pf-m-primary:active {
+  transform: translateY(1px);
+}
+
+.pf-v5-c-button.pf-m-primary::after {
+  border: 0 !important;
+}
+
+.pf-v5-c-button.pf-m-secondary {
+  background: #fff !important;
+  color: var(--bc-primary) !important;
+}
+
+.pf-v5-c-button.pf-m-secondary::after {
+  border: 1px solid #efb6b6 !important;
+  border-radius: 11px !important;
+}
+
+.pf-v5-c-button.pf-m-link {
+  color: var(--bc-primary) !important;
+}
+
+/* ---------- Liens ---------- */
+.pf-v5-c-login a,
+#kc-form-options a,
+#kc-registration a {
+  color: var(--bc-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pf-v5-c-login a:hover {
+  color: var(--bc-primary-dark);
+  text-decoration: underline;
+}
+
+/* Bandeau "Pas de compte ? S'inscrire" sous le formulaire */
+.pf-v5-c-login__main-footer-band {
+  background: var(--bc-primary-soft) !important;
+  border-top: 1px solid #fbd5d5;
+  color: var(--bc-muted);
+  padding: 16px !important;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+/* ---------- Messages (erreur, succès, info) ---------- */
+.pf-v5-c-alert {
+  border-radius: 12px;
+  box-shadow: none !important;
+  border: 1px solid var(--bc-border);
+}
+
+.pf-v5-c-alert.pf-m-danger,
+.pf-v5-c-alert.pf-m-error {
+  background: #fdecec !important;
+  border-color: #f6c5c5;
+}
+
+.pf-v5-c-alert.pf-m-success {
+  background: #e8f7ef !important;
+  border-color: #bfe6cf;
+}
+
+.pf-v5-c-alert.pf-m-warning {
+  background: #fff4df !important;
+  border-color: #f3dcae;
+}
+
+/* ---------- Sélecteur de langue ---------- */
+#login-select-toggle {
+  font-weight: 600;
+  color: var(--bc-text);
+}
+
+@media (max-width: 600px) {
+  .pf-v5-c-login {
+    padding: 20px 12px;
+  }
+
+  #kc-page-title {
+    font-size: 22px !important;
+  }
+}

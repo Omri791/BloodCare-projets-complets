@@ -1,0 +1,19 @@
+<div class="dashboard container">
+  <app-sidebar [roleLabel]="roleLabel" [name]="store.displayName" [items]="menu" />
+
+  <section class="content">
+    @if (store.error) {
+      <div class="card alert alert-danger">
+        <span>{{store.error}}</span>
+        @if (!store.ready) { <button class="btn btn-secondary btn-sm" (click)="store.load()">Réessayer</button> }
+      </div>
+    }
+    @if (store.message) {
+      <div class="card alert alert-success">
+        <span>{{store.message}}</span>
+        <button class="btn btn-secondary btn-sm" (click)="store.message = ''">Fermer</button>
+      </div>
+    }
+    <ng-content />
+  </section>
+</div>

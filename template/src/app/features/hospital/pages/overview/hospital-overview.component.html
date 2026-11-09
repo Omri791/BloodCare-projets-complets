@@ -1,0 +1,23 @@
+<div class="page-title">
+  <div><h1>Espace Hôpital</h1><p>{{store.hopital?.nom ?? 'Chargement…'}} — suivez vos demandes de sang et notifications.</p></div>
+  <a class="btn btn-primary" routerLink="/dashboard/hospital/nouvelle-demande">+ Nouvelle demande</a>
+</div>
+
+<div class="grid grid-4">
+  <app-stat-card label="Demandes" [value]="store.total" />
+  <app-stat-card label="En attente" [value]="store.enAttente" />
+  <app-stat-card label="Traitées" [value]="store.traitees" />
+  <app-stat-card label="Notifications" [value]="store.nonLues" />
+</div>
+
+<div class="card section">
+  <div class="section-head"><h2>Demandes récentes</h2><a class="btn btn-secondary btn-sm" routerLink="/dashboard/hospital/demandes">Tout voir</a></div>
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (recentes.length === 0) { <p class="muted">Aucune demande pour le moment.</p> }
+  @for (d of recentes; track d.id) {
+    <div class="item-row actions" style="justify-content:space-between">
+      <span><strong>#{{d.id}}</strong> · {{d.groupeSanguin}} · {{d.quantite}} poche(s) <span class="muted">— {{d.dateCreation | date:'dd/MM/yyyy'}}</span></span>
+      <span class="badge" [class]="'badge ' + demandeClass(d.statut)">{{demandeLabel(d.statut)}}</span>
+    </div>
+  }
+</div>

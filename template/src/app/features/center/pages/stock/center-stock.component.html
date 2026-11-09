@@ -1,0 +1,35 @@
+<div class="page-title">
+  <div>
+    <h1>Stock sanguin</h1>
+    <p>
+      {{store.stockTotal}} poche(s) en stock
+      @if (store.centre?.capaciteStock) { — capacité du centre : {{store.centre?.capaciteStock}} poches }
+    </p>
+  </div>
+  <button class="btn btn-primary" [disabled]="!store.ready" (click)="gestion ? gestion = false : ouvrirGestion()">{{gestion ? 'Terminer' : 'Gérer le stock'}}</button>
+</div>
+
+<div class="card">
+  @if (gestion) { <p class="muted" style="margin-top:0">Corrigez les quantités (inventaire, poches périmées…) puis validez chaque ligne.</p> }
+  @for (s of store.stockLignes; track s.groupe) {
+    <div class="stock">
+      <span class="blood-type">{{s.groupe}}</span>
+      @if (gestion) {
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" (click)="ajuster(s.groupe, -1)">−</button>
+          <input type="number" min="0" [(ngModel)]="edit[s.groupe]">
+          <button class="btn btn-secondary btn-sm" (click)="ajuster(s.groupe, 1)">+</button>
+        </div>
+        <button class="btn btn-primary btn-sm" [disabled]="store.saving || edit[s.groupe] === s.quantite || edit[s.groupe] == null || edit[s.groupe] < 0" (click)="enregistrer(s.groupe)">Valider</button>
+      } @else {
+        <strong>{{s.quantite}} poche(s)</strong>
+        <div class="actions">
+          @if (s.niveau !== 'Normal') {
+            <a class="btn btn-outline btn-sm" title="Appeler les donneurs {{s.groupe}}" routerLink="/dashboard/center/appels" [queryParams]="{ groupe: s.groupe }">Appeler</a>
+          }
+          <span class="badge" [class.badge-danger]="s.niveau==='Critique'" [class.badge-warning]="s.niveau==='Faible'" [class.badge-success]="s.niveau==='Normal'">{{s.niveau}}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

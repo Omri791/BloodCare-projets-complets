@@ -1,0 +1,38 @@
+<div class="page-title">
+  <div><h1>Hôpitaux</h1><p>Établissements partenaires de la plateforme.</p></div>
+  <button class="btn btn-primary" (click)="showForm = !showForm">+ Nouvel hôpital</button>
+</div>
+
+@if (showForm) {
+  <div class="card" style="margin-bottom:28px">
+    <h2>Nouvel hôpital</h2>
+    <p>Crée la fiche de l'hôpital. Il se connecte avec un compte Keycloak ayant <strong>le même email</strong> et le rôle <code>HOPITAL</code>.</p>
+    <form class="form-grid" (ngSubmit)="creer()">
+      <div class="form-group"><label>Nom</label><input [(ngModel)]="newHopital.nom" name="nom" required></div>
+      <div class="form-group"><label>Email</label><input type="email" [(ngModel)]="newHopital.email" name="email" required></div>
+      <div class="form-group"><label>Ville</label><input [(ngModel)]="newHopital.ville" name="ville"></div>
+      <div class="form-group"><label>Adresse</label><input [(ngModel)]="newHopital.adresse" name="adresse"></div>
+      <div class="form-group"><label>Type</label><select [(ngModel)]="newHopital.type" name="type"><option>Public</option><option>Privé</option><option>Universitaire</option></select></div>
+      <div class="form-group"><label>Capacité (lits)</label><input type="number" min="0" [(ngModel)]="newHopital.capaciteLits" name="capaciteLits"></div>
+      <div class="form-group full"><div class="actions">
+        <button class="btn btn-primary" [disabled]="store.saving">{{store.saving ? 'Création…' : 'Créer l\'hôpital'}}</button>
+        <button type="button" class="btn btn-secondary" (click)="showForm = false">Annuler</button>
+      </div></div>
+    </form>
+  </div>
+}
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.hopitaux.length === 0) { <p class="muted">Aucun hôpital.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Nom</th><th>Email</th><th>Ville</th><th>Type</th><th>Lits</th></tr></thead>
+      <tbody>
+        @for (h of store.hopitaux; track h.id) {
+          <tr><td><strong>{{h.nom}}</strong></td><td>{{h.email}}</td><td>{{h.ville ?? '—'}}</td><td>{{h.type ?? '—'}}</td><td>{{h.capaciteLits ?? '—'}}</td></tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

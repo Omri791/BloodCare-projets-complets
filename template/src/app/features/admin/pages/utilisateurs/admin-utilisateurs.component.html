@@ -1,0 +1,31 @@
+<div class="page-title">
+  <div><h1>Utilisateurs</h1><p>{{store.users.length}} compte(s) sur la plateforme.</p></div>
+</div>
+
+<div class="card table-wrap">
+  <div class="section-head">
+    <h2>{{filtered.length}} utilisateur(s)</h2>
+    <div class="actions">
+      @for (f of filters; track f.value) {
+        <button class="btn btn-sm" [class.btn-primary]="filter === f.value" [class.btn-secondary]="filter !== f.value" (click)="filter = f.value">{{f.label}}</button>
+      }
+    </div>
+  </div>
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (filtered.length === 0) { <p class="muted">Aucun utilisateur.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Action</th></tr></thead>
+      <tbody>
+        @for (u of filtered; track u.id) {
+          <tr>
+            <td>{{u.nom}}</td>
+            <td>{{u.email}}</td>
+            <td><span class="badge badge-success">{{roleLabel(u.role)}}</span></td>
+            <td><button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="supprimer(u)">Supprimer</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

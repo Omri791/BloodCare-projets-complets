@@ -1,0 +1,26 @@
+<div class="page-title">
+  <div><h1>Mes demandes</h1><p>{{store.enAttente}} en attente · {{store.traitees}} traitée(s)</p></div>
+  <a class="btn btn-primary" routerLink="/dashboard/hospital/nouvelle-demande">+ Nouvelle demande</a>
+</div>
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.demandes.length === 0) { <p class="muted">Aucune demande pour le moment.</p> }
+  @else {
+    <table>
+      <thead><tr><th>#</th><th>Date</th><th>Groupe</th><th>Quantité</th><th>Urgence</th><th>Statut</th></tr></thead>
+      <tbody>
+        @for (d of store.demandes; track d.id) {
+          <tr>
+            <td>#{{d.id}}</td>
+            <td>{{d.dateCreation | date:'dd/MM/yyyy'}}</td>
+            <td><span class="blood-type">{{d.groupeSanguin}}</span></td>
+            <td>{{d.statut === 'ACCEPTEE' ? d.unitesFournies + '/' : ''}}{{d.quantite}}</td>
+            <td><span class="badge" [class]="'badge ' + urgenceClass(d.urgence)">{{d.urgence}}</span></td>
+            <td><span class="badge" [class]="'badge ' + demandeClass(d.statut)">{{demandeLabel(d.statut)}}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

@@ -1,0 +1,35 @@
+<div class="page-title">
+  <div><h1>Mon profil</h1><p>Ces informations servent à vérifier votre éligibilité au don.</p></div>
+  <button class="btn" [class.btn-primary]="store.donneur?.disponibilite" [class.btn-secondary]="!store.donneur?.disponibilite"
+          [disabled]="!store.ready || store.saving" (click)="store.toggleDisponibilite()">
+    {{store.donneur?.disponibilite ? 'Je suis disponible' : 'Indisponible'}}
+  </button>
+</div>
+
+@if (store.eligibilite && !store.eligibilite.eligible) {
+  <div class="card alert alert-warning"><span>{{store.eligibilite.raison}}</span></div>
+}
+
+<div class="card">
+  @if (profil; as p) {
+    <form class="form-grid" (ngSubmit)="enregistrer()">
+      <div class="form-group"><label>Nom complet</label><input [(ngModel)]="p.nom" name="nom" required></div>
+      <div class="form-group"><label>Date de naissance</label><input type="date" [(ngModel)]="p.dateNaissance" name="dateNaissance" required></div>
+      <div class="form-group"><label>Sexe</label><select [(ngModel)]="p.sexe" name="sexe"><option value="M">Homme</option><option value="F">Femme</option></select></div>
+      <div class="form-group">
+        <label>Groupe sanguin</label>
+        <select [(ngModel)]="p.groupeSanguin" name="groupeSanguin"><option [ngValue]="undefined">Je ne sais pas</option>@for (g of groupes; track g) { <option [ngValue]="g">{{g}}</option> }</select>
+      </div>
+      <div class="form-group"><label>Poids (kg)</label><input type="number" min="30" [(ngModel)]="p.poids" name="poids" required></div>
+      <div class="form-group"><label>Hémoglobine (g/dL)</label><input type="number" step="0.1" min="5" [(ngModel)]="p.hemoglobine" name="hemoglobine" required></div>
+      <div class="form-group"><label>Téléphone</label><input [(ngModel)]="p.telephone" name="telephone"></div>
+      <div class="form-group"><label>Ville</label><input [(ngModel)]="p.ville" name="ville"></div>
+      <div class="form-group full"><div class="actions">
+        <button class="btn btn-primary" [disabled]="store.saving">{{store.saving ? 'Enregistrement…' : 'Enregistrer'}}</button>
+        <button type="button" class="btn btn-secondary" (click)="annuler()">Annuler les modifications</button>
+      </div></div>
+    </form>
+  } @else {
+    <p>Chargement…</p>
+  }
+</div>

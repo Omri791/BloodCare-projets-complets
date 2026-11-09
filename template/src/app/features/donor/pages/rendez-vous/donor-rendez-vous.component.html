@@ -1,0 +1,52 @@
+<div class="page-title">
+  <div><h1>Mes rendez-vous</h1><p>Prenez rendez-vous dans un centre de don et suivez vos demandes.</p></div>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Prendre rendez-vous</h2></div>
+  @if (store.prochain; as p) {
+    <p>Vous avez déjà un rendez-vous le <strong>{{p.date | date:'dd/MM/yyyy \'à\' HH:mm'}}</strong> au {{p.centreDeDon?.nom}}.</p>
+  } @else if (store.eligibilite && !store.eligibilite.eligible) {
+    <p class="muted">{{store.eligibilite.raison}}</p>
+  } @else if (!showForm) {
+    <p>Choisissez un centre et une date pour votre prochain don.</p>
+    <button class="btn btn-primary" [disabled]="!store.peutPrendreRdv" (click)="showForm = true">Nouveau rendez-vous</button>
+  } @else {
+    <form class="form-grid" (ngSubmit)="prendre()">
+      <div class="form-group">
+        <label>Centre de don</label>
+        <select [(ngModel)]="form.centreId" name="centreId" required>
+          <option [ngValue]="null" disabled>Choisir un centre</option>
+          @for (c of store.centres; track c.id) { <option [ngValue]="c.id">{{c.nom}}{{c.ville ? ' — ' + c.ville : ''}}</option> }
+        </select>
+      </div>
+      <div class="form-group"><label>Date et heure</label><input type="datetime-local" [min]="minDate" [(ngModel)]="form.date" name="date" required></div>
+      <div class="form-group full"><div class="actions">
+        <button class="btn btn-primary" [disabled]="store.saving || !form.centreId || !form.date">{{store.saving ? 'Envoi…' : 'Demander le rendez-vous'}}</button>
+        <button type="button" class="btn btn-secondary" (click)="showForm = false">Annuler</button>
+      </div></div>
+    </form>
+  }
+</div>
+
+<div class="card section table-wrap">
+  <div class="section-head"><h2>Historique des rendez-vous</h2></div>
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.rendezVous.length === 0) { <p class="muted">Aucun rendez-vous pour le moment.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Date</th><th>Heure</th><th>Centre</th><th>Statut</th><th></th></tr></thead>
+      <tbody>
+        @for (r of store.rendezVous; track r.id) {
+          <tr>
+            <td>{{r.date | date:'dd/MM/yyyy'}}</td>
+            <td>{{r.date | date:'HH:mm'}}</td>
+            <td>{{r.centreDeDon?.nom ?? '—'}}</td>
+            <td><span class="badge" [class]="'badge ' + rdvClass(r.statut)">{{rdvLabel(r.statut)}}</span></td>
+            <td>@if (actif(r)) { <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="annuler(r)">Annuler</button> }</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

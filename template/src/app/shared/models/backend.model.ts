@@ -33,6 +33,8 @@ export interface DemandeDeSang {
   motif?: string;
   statut: string;
   unitesFournies?: number;
+  delaiTraitement?: number;
+  hopital?: Hopital;
 }
 
 export interface NouvelleDemande {
@@ -49,4 +51,61 @@ export interface NotificationDto {
   date: string;
   type?: string;
   lu: boolean;
+}
+
+export interface Stock {
+  id: number;
+  groupeSanguin: string;
+  quantiteDisponible: number;
+  derniereMaj?: string;
+}
+
+export interface Donneur extends Utilisateur {
+  dateNaissance?: string;
+  sexe?: string;
+  groupeSanguin?: string;
+  telephone?: string;
+  ville?: string;
+  poids?: number;
+  hemoglobine?: number;
+  disponibilite?: boolean;
+  totalDons?: number;
+  dernierDon?: string;
+}
+
+export interface Eligibilite {
+  eligible: boolean;
+  raison?: string | null;
+}
+
+export interface Don {
+  id: number;
+  dateDon: string;
+  quantite: number;
+}
+
+export interface RendezVous {
+  id: number;
+  date: string;
+  statut: string;
+  donneur?: Donneur;
+  centreDeDon?: CentreDeDon;
+  don?: Don | null;
+}
+
+export interface Creneau {
+  id: number;
+  date: string;
+  capacite: number;
+  placesRestantes: number;
+}
+
+export interface AppelDon {
+  id: number;
+  dateCreation: string;
+  groupeSanguin?: string | null;
+  message: string;
+  statut: string;
+  centreDeDon?: CentreDeDon;
+  donneur?: Donneur;
 }

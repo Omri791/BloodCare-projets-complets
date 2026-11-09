@@ -1,0 +1,32 @@
+<div class="page-title">
+  <div><h1>Créneaux</h1><p>Les donneurs choisissent un de ces créneaux quand ils répondent à vos appels.</p></div>
+  <span class="badge badge-neutral">{{store.creneauxLibres}} libre(s)</span>
+</div>
+
+<div class="card">
+  <h2>Ajouter un créneau</h2>
+  <form class="form-grid" (ngSubmit)="ajouter()">
+    <div class="form-group"><label>Date et heure</label><input type="datetime-local" [min]="minDate" [(ngModel)]="form.date" name="date" required></div>
+    <div class="form-group"><label>Nombre de places</label><input type="number" min="1" [(ngModel)]="form.capacite" name="capacite"></div>
+    <div class="form-group full"><button class="btn btn-primary" [disabled]="store.saving || !form.date || form.capacite < 1">+ Ajouter</button></div>
+  </form>
+</div>
+
+<div class="card section table-wrap">
+  <div class="section-head"><h2>Mes créneaux</h2></div>
+  @if (store.creneaux.length === 0) { <p class="muted">Aucun créneau. Ajoutez des créneaux pour que les donneurs puissent répondre à vos appels.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Date</th><th>Places libres</th><th></th></tr></thead>
+      <tbody>
+        @for (c of store.creneaux; track c.id) {
+          <tr [style.opacity]="isPast(c.date) ? .5 : 1">
+            <td>{{c.date | date:'dd/MM/yyyy HH:mm'}}</td>
+            <td><span class="badge" [class]="c.placesRestantes > 0 ? 'badge badge-success' : 'badge badge-neutral'">{{c.placesRestantes}} / {{c.capacite}}</span></td>
+            <td>@if (c.placesRestantes === c.capacite) { <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="supprimer(c)">Supprimer</button> }</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

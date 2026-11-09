@@ -1,0 +1,46 @@
+<div class="page-title">
+  <div><h1>Mon espace donneur</h1><p>{{store.donneur?.nom ?? 'Chargement…'}} — gérez votre disponibilité, vos rendez-vous et vos dons.</p></div>
+  <button class="btn" [class.btn-primary]="store.donneur?.disponibilite" [class.btn-secondary]="!store.donneur?.disponibilite"
+          [disabled]="!store.ready || store.saving" (click)="store.toggleDisponibilite()">
+    {{store.donneur?.disponibilite ? 'Je suis disponible' : 'Indisponible'}}
+  </button>
+</div>
+
+@if (store.eligibilite && !store.eligibilite.eligible) {
+  <div class="card alert alert-warning">
+    <span><strong>Vous ne pouvez pas prendre de rendez-vous pour le moment.</strong> {{store.eligibilite.raison}}</span>
+    @if (store.profilIncomplet) { <a class="btn btn-primary btn-sm" routerLink="/dashboard/donor/profil">Compléter mon profil</a> }
+  </div>
+}
+
+<div class="grid grid-4">
+  <app-stat-card label="Dons réalisés" [value]="store.donneur?.totalDons ?? 0" />
+  <app-stat-card label="Prochain don" [value]="store.prochain ? (store.prochain.date | date:'dd/MM') : '—'" />
+  <app-stat-card label="Groupe" [value]="store.donneur?.groupeSanguin ?? '—'" />
+  <app-stat-card label="Notifications" [value]="store.nonLues" />
+</div>
+
+<div class="section grid grid-2">
+  <div class="card">
+    <div class="section-head">
+      <h2>Appels des centres</h2>
+      @if (store.appels.length > 0) { <span class="badge badge-danger">{{store.appels.length}} EN ATTENTE</span> }
+    </div>
+    @if (store.appels.length === 0) { <p class="muted">Aucun appel pour le moment. Les centres vous contacteront ici quand ils auront besoin de vous.</p> }
+    @else {
+      <p>Des centres ont besoin de vous : choisissez un créneau pour venir donner.</p>
+      <a class="btn btn-primary" routerLink="/dashboard/donor/appels">Voir les appels</a>
+    }
+  </div>
+
+  <div class="card">
+    <div class="section-head"><h2>Prochain rendez-vous</h2></div>
+    @if (store.prochain; as p) {
+      <p>Le <strong>{{p.date | date:'dd/MM/yyyy \'à\' HH:mm'}}</strong> au {{p.centreDeDon?.nom}}.</p>
+      <a class="btn btn-secondary" routerLink="/dashboard/donor/rendez-vous">Gérer mes rendez-vous</a>
+    } @else {
+      <p class="muted">Aucun rendez-vous prévu.</p>
+      <a class="btn btn-primary" [class.btn-secondary]="!store.peutPrendreRdv" routerLink="/dashboard/donor/rendez-vous">Prendre rendez-vous</a>
+    }
+  </div>
+</div>

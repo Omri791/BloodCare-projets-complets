@@ -1,0 +1,47 @@
+<div class="page-title">
+  <div><h1>Appels aux donneurs</h1><p>Les donneurs appelés reçoivent la demande et choisissent un de vos créneaux libres.</p></div>
+</div>
+
+<div class="card">
+  <div class="section-head">
+    <h2>{{donneur ? 'Appeler ' + donneur.nom : 'Lancer un appel aux donneurs'}}</h2>
+    @if (donneur) { <button class="btn btn-secondary btn-sm" (click)="appelATous()">Appel général</button> }
+  </div>
+  @if (store.ready && store.creneauxLibres === 0) {
+    <p style="color:var(--danger)">Vous n'avez aucun créneau libre à venir : <a routerLink="/dashboard/center/creneaux"><u>ajoutez d'abord des créneaux</u></a>, le donneur devra en choisir un.</p>
+  }
+  <p class="muted">{{donneur ? 'Le donneur recevra la demande et choisira un de vos créneaux libres.' : 'Tous les donneurs disponibles (du groupe choisi) recevront la demande.'}}</p>
+  <form class="form-grid" (ngSubmit)="envoyer()">
+    @if (!donneur) {
+      <div class="form-group">
+        <label>Groupe sanguin recherché</label>
+        <select [(ngModel)]="form.groupeSanguin" name="groupe"><option value="">Tous les groupes</option>@for (g of groupes; track g) { <option>{{g}}</option> }</select>
+      </div>
+    }
+    <div class="form-group" [class.full]="!!donneur">
+      <label>Message (facultatif)</label>
+      <input [(ngModel)]="form.message" name="message" placeholder="Ex : stock O- critique, merci de venir donner">
+    </div>
+    <div class="form-group full"><button class="btn btn-primary" [disabled]="store.saving || !store.ready || store.creneauxLibres === 0">{{store.saving ? 'Envoi…' : 'Envoyer l’appel'}}</button></div>
+  </form>
+</div>
+
+<div class="card section table-wrap">
+  <div class="section-head"><h2>Appels envoyés</h2></div>
+  @if (store.appels.length === 0) { <p class="muted">Aucun appel envoyé pour le moment.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Date</th><th>Donneur</th><th>Groupe</th><th>Réponse</th></tr></thead>
+      <tbody>
+        @for (a of store.appels; track a.id) {
+          <tr>
+            <td>{{a.dateCreation | date:'dd/MM HH:mm'}}</td>
+            <td>{{a.donneur?.nom}}</td>
+            <td>{{a.groupeSanguin ?? 'Tous'}}</td>
+            <td><span class="badge" [class]="'badge ' + appelClass(a.statut)">{{appelLabel(a.statut)}}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

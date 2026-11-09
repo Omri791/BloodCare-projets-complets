@@ -43,31 +43,31 @@ export const routes: Routes = [
     loadComponent: () => import('./features/contact/contact.component').then(m => m.ContactComponent)
   },
 
-  // Dashboards
+  // Espaces : chaque rôle a son layout (menu latéral) et ses pages, voir features/<rôle>/<rôle>.routes.ts
   { path: 'dashboard', canActivate: [dashboardRedirectGuard], children: [] },
   {
     path: 'dashboard/hospital',
     canActivate: [authGuard],
     data: { roles: ['HOSPITAL'] },
-    loadComponent: () => import('./features/hospital/hospital-dashboard.component').then(m => m.HospitalDashboardComponent)
+    loadChildren: () => import('./features/hospital/hospital.routes').then(m => m.HOSPITAL_ROUTES)
   },
   {
     path: 'dashboard/center',
     canActivate: [authGuard],
     data: { roles: ['CENTER'] },
-    loadComponent: () => import('./features/center/center-dashboard.component').then(m => m.CenterDashboardComponent)
+    loadChildren: () => import('./features/center/center.routes').then(m => m.CENTER_ROUTES)
   },
   {
     path: 'dashboard/donor',
     canActivate: [authGuard],
     data: { roles: ['DONOR'] },
-    loadComponent: () => import('./features/donor/donor-dashboard.component').then(m => m.DonorDashboardComponent)
+    loadChildren: () => import('./features/donor/donor.routes').then(m => m.DONOR_ROUTES)
   },
   {
     path: 'dashboard/admin',
     canActivate: [authGuard],
     data: { roles: ['ADMIN'] },
-    loadComponent: () => import('./features/admin/admin-dashboard.component').then(m => m.AdminDashboardComponent)
+    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES)
   },
 
   { path: '**', redirectTo: '' }

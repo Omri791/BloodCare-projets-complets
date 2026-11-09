@@ -10,3 +10,5 @@ services:
       - "8180:8180"
     volumes:
       - ./blood-realm.json:/opt/keycloak/data/import/blood-realm.json:ro
+      # Thème des pages de connexion / inscription aux couleurs de l'application
+      - ./themes/bloodcare:/opt/keycloak/themes/bloodcare:ro

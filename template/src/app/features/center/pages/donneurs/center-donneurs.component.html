@@ -1,0 +1,37 @@
+<div class="page-title">
+  <div><h1>Donneurs</h1><p>Profils, disponibilités et historique des donneurs.</p></div>
+  <span class="badge badge-neutral">{{donneurs.length}} / {{store.donneurs.length}}</span>
+</div>
+
+<div class="card table-wrap">
+  <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:15px">
+    <div class="form-group"><input [(ngModel)]="filtre.texte" name="texte" placeholder="Rechercher (nom, email, ville)"></div>
+    <div class="form-group"><select [(ngModel)]="filtre.groupe" name="groupe"><option value="">Tous les groupes</option>@for (g of groupes; track g) { <option>{{g}}</option> }</select></div>
+    <div class="form-group"><label style="display:flex;gap:8px;align-items:center;height:100%"><input type="checkbox" [(ngModel)]="filtre.disponibles" name="disponibles"> Disponibles uniquement</label></div>
+  </div>
+
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (donneurs.length === 0) { <p class="muted">Aucun donneur trouvé.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Donneur</th><th>Groupe</th><th>Ville</th><th>Téléphone</th><th>Disponibilité</th><th>Dons</th><th>Dernier don</th><th></th></tr></thead>
+      <tbody>
+        @for (d of donneurs; track d.id) {
+          <tr>
+            <td><strong>{{d.nom}}</strong><br><small class="muted">{{d.email}}</small></td>
+            <td><span class="blood-type">{{d.groupeSanguin ?? '—'}}</span></td>
+            <td>{{d.ville ?? '—'}}</td>
+            <td>{{d.telephone ?? '—'}}</td>
+            <td><span class="badge" [class]="d.disponibilite ? 'badge badge-success' : 'badge badge-neutral'">{{d.disponibilite ? 'Disponible' : 'Indisponible'}}</span></td>
+            <td>{{d.totalDons ?? 0}}</td>
+            <td>{{d.dernierDon ? (d.dernierDon | date:'dd/MM/yyyy') : '—'}}</td>
+            <td><div class="actions">
+              <a class="btn btn-outline btn-sm" routerLink="/dashboard/center/appels" [queryParams]="{ donneur: d.id }">Appeler</a>
+              <a class="btn btn-secondary btn-sm" routerLink="/dashboard/center/rendez-vous" [queryParams]="{ email: d.email }">Planifier un RDV</a>
+            </div></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

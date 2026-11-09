@@ -1,0 +1,34 @@
+<div class="page-title">
+  <div><h1>Appels des centres</h1><p>Acceptez un appel en choisissant un créneau : votre rendez-vous est confirmé immédiatement.</p></div>
+  @if (store.appels.length > 0) { <span class="badge badge-danger">{{store.appels.length}} EN ATTENTE</span> }
+</div>
+
+<div class="card">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.appels.length === 0) { <p class="muted">Aucun appel pour le moment. Les centres vous contacteront ici quand ils auront besoin de vous.</p> }
+  @for (a of store.appels; track a.id) {
+    <div class="item-row">
+      <h3 style="margin:0 0 4px">{{a.centreDeDon?.nom}}{{a.groupeSanguin ? ' — besoin de ' + a.groupeSanguin : ''}}</h3>
+      <p style="margin:0 0 10px">{{a.message}} <small class="muted">({{a.dateCreation | date:'dd/MM/yyyy'}})</small></p>
+      @if (appelChoisi?.id === a.id) {
+        <p><strong>Choisissez un créneau :</strong></p>
+        @if (loadingCreneaux) { <p>Chargement des créneaux…</p> }
+        @else if (creneaux.length === 0) { <p class="muted">Aucun créneau disponible pour le moment.</p> }
+        @else {
+          <div class="actions" style="margin-bottom:10px">
+            @for (c of creneaux; track c.id) {
+              <button class="btn btn-outline btn-sm" [disabled]="store.saving" (click)="choisirCreneau(c)">{{c.date | date:'dd/MM/yyyy HH:mm'}} · {{c.placesRestantes}} place(s)</button>
+            }
+          </div>
+        }
+        <button class="btn btn-secondary btn-sm" (click)="appelChoisi = null">Retour</button>
+      } @else {
+        <div class="actions">
+          <button class="btn btn-primary btn-sm" [disabled]="store.saving || !store.peutPrendreRdv"
+                  [title]="store.peutPrendreRdv ? '' : 'Rendez-vous déjà en cours ou non éligible'" (click)="accepter(a)">Accepter</button>
+          <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="refuser(a)">Refuser</button>
+        </div>
+      }
+    </div>
+  }
+</div>

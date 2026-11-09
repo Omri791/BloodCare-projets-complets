@@ -1,0 +1,20 @@
+<aside class="sidebar">
+  <div class="head">
+    <span class="avatar">{{initial}}</span>
+    <div>
+      <span class="role">{{roleLabel}}</span>
+      <strong class="name">{{name || 'Chargement…'}}</strong>
+    </div>
+  </div>
+
+  <nav>
+    @for (item of items; track item.path) {
+      <a class="item" [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: exact(item) }">
+        <span>{{item.label}}</span>
+        @if (item.badge?.(); as count) { <span class="count">{{count}}</span> }
+      </a>
+    }
+  </nav>
+
+  <button class="logout" (click)="auth.logout()">Déconnexion</button>
+</aside>

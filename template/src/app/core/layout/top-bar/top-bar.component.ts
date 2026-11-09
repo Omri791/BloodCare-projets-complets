@@ -6,8 +6,8 @@ import { Component } from '@angular/core';
   template: `
     <div class="topbar">
       <div class="topbar-inner">
-        <span>📞 +216 71 000 000</span>
-        <span>✉️ contact@bloodcare.tn</span>
+        <span>+216 71 000 000</span>
+        <span>contact@bloodcare.tn</span>
         <span class="social">Facebook · Instagram · LinkedIn</span>
       </div>
     </div>

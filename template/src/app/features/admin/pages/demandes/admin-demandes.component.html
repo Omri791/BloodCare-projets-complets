@@ -1,0 +1,25 @@
+<div class="page-title">
+  <div><h1>Demandes en attente</h1><p>Demandes de sang des hôpitaux qui n'ont encore été traitées par aucun centre.</p></div>
+</div>
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.demandesEnAttente.length === 0) { <p class="muted">Aucune demande en attente.</p> }
+  @else {
+    <table>
+      <thead><tr><th>#</th><th>Date</th><th>Hôpital</th><th>Groupe</th><th>Quantité</th><th>Urgence</th></tr></thead>
+      <tbody>
+        @for (d of store.demandesEnAttente; track d.id) {
+          <tr>
+            <td>#{{d.id}}</td>
+            <td>{{d.dateCreation | date:'dd/MM/yyyy HH:mm'}}</td>
+            <td>{{d.hopital?.nom ?? '—'}}</td>
+            <td><span class="blood-type">{{d.groupeSanguin}}</span></td>
+            <td>{{d.quantite}}</td>
+            <td><span class="badge" [class]="'badge ' + urgenceClass(d.urgence)">{{d.urgence}}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

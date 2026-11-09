@@ -1,0 +1,46 @@
+<div class="page-title">
+  <div><h1>Demandes des hôpitaux</h1><p>Acceptez une demande pour retirer les poches de votre stock, ou refusez-la.</p></div>
+</div>
+
+<div class="card">
+  <div class="section-head">
+    <h2>{{demandes.length}} demande(s)</h2>
+    <div class="actions">
+      @for (f of filtres; track f.value) {
+        <button class="btn btn-sm" [class.btn-primary]="filtre === f.value" [class.btn-secondary]="filtre !== f.value" (click)="filtre = f.value">{{f.label}}</button>
+      }
+    </div>
+  </div>
+
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (demandes.length === 0) { <p class="muted">Aucune demande.</p> }
+  @for (d of demandes; track d.id) {
+    <div class="request">
+      <div>
+        <strong>#{{d.id}} · {{d.hopital?.nom ?? 'Hôpital'}}</strong>
+        <p>{{d.groupeSanguin}} · {{d.quantite}} poches · <span class="badge" [class]="'badge ' + urgenceClass(d.urgence)">{{d.urgence}}</span> · {{d.dateCreation | date:'dd/MM/yyyy HH:mm'}}</p>
+        @if (d.motif) { <p>{{d.motif}}</p> }
+        @if (d.statut === 'ACCEPTEE') { <p>{{d.unitesFournies}}/{{d.quantite}} poche(s) fournie(s)</p> }
+        @if (acceptId === d.id) {
+          <div class="actions" style="margin-top:10px">
+            <label>Poches fournies</label>
+            <input type="number" min="1" [max]="d.quantite" [(ngModel)]="unites" name="unites">
+            <span class="badge badge-neutral">Stock {{d.groupeSanguin}} : {{store.stockDispo(d.groupeSanguin)}}</span>
+            <button class="btn btn-primary btn-sm" [disabled]="store.saving" (click)="accepter(d)">Valider</button>
+            <button class="btn btn-secondary btn-sm" (click)="acceptId = null">Annuler</button>
+          </div>
+        }
+      </div>
+      @if (d.statut === 'EN_ATTENTE') {
+        @if (acceptId !== d.id) {
+          <div class="actions">
+            <button class="btn btn-outline btn-sm" [disabled]="store.saving" (click)="startAccept(d)">Accepter</button>
+            <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="refuser(d)">Refuser</button>
+          </div>
+        }
+      } @else {
+        <span class="badge" [class]="'badge ' + demandeClass(d.statut)">{{demandeLabel(d.statut)}}</span>
+      }
+    </div>
+  }
+</div>

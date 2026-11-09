@@ -31,6 +31,46 @@ public class StockService {
         return repository.findByCentreDeDonId(centreId);
     }
 
+    /**
+     * CentreDeDon.gererStock() : fixe le nombre de poches d'un groupe sanguin
+     * (inventaire, poches périmées...). La ligne de stock est créée si elle n'existe pas.
+     */
+    public Stock definirQuantite(Long centreId, String groupeSanguin, Integer quantite) {
+        if (!GROUPES.contains(groupeSanguin)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Groupe sanguin invalide");
+        }
+        if (quantite == null || quantite < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La quantité ne peut pas être négative");
+        }
+        CentreDeDon centre = centreService.findById(centreId);
+        List<Stock> stocks = repository.findByCentreDeDonId(centreId);
+
+        if (centre.getCapaciteStock() != null) {
+            int autres = stocks.stream()
+                    .filter(s -> !groupeSanguin.equals(s.getGroupeSanguin()))
+                    .mapToInt(Stock::getQuantiteDisponible)
+                    .sum();
+            if (autres + quantite > centre.getCapaciteStock()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Capacité du centre dépassée (" + centre.getCapaciteStock() + " poches maximum)");
+            }
+        }
+
+        Stock stock = stocks.stream()
+                .filter(s -> groupeSanguin.equals(s.getGroupeSanguin()))
+                .findFirst()
+                .orElseGet(() -> {
+                    Stock s = new Stock();
+                    s.setGroupeSanguin(groupeSanguin);
+                    s.setCentreDeDon(centre);
+                    return s;
+                });
+        stock.setQuantiteDisponible(quantite);
+        return repository.save(stock);
+    }
+
+    private static final List<String> GROUPES = List.of("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-");
+
     public Stock findById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Stock introuvable"));

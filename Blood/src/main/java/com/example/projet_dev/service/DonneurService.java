@@ -75,27 +75,52 @@ public class DonneurService {
         repository.delete(findById(id));
     }
 
+    /** Le donneur complète son propre profil (email et compteurs de dons non modifiables). */
+    public Donneur updateProfil(Long id, Donneur data) {
+        Donneur d = findById(id);
+        if (data.getNom() != null && !data.getNom().isBlank()) d.setNom(data.getNom());
+        d.setDateNaissance(data.getDateNaissance());
+        d.setSexe(data.getSexe());
+        d.setGroupeSanguin(data.getGroupeSanguin());
+        d.setTelephone(data.getTelephone());
+        d.setVille(data.getVille());
+        d.setPoids(data.getPoids());
+        d.setHemoglobine(data.getHemoglobine());
+        if (data.getDisponibilite() != null) d.setDisponibilite(data.getDisponibilite());
+        return repository.save(d);
+    }
+
     /** Donneur.verifierEligibilite() */
     public boolean verifierEligibilite(Long id) {
+        return raisonNonEligible(id) == null;
+    }
+
+    /** null si le donneur est éligible, sinon la raison (affichée au donneur). */
+    public String raisonNonEligible(Long id) {
         Donneur d = findById(id);
 
         if (d.getDateNaissance() == null || d.getPoids() == null
                 || d.getHemoglobine() == null || d.getSexe() == null) {
-            return false;
+            return "Profil incomplet : date de naissance, sexe, poids et hémoglobine sont nécessaires";
         }
 
         int age = Period.between(d.getDateNaissance(), LocalDate.now()).getYears();
-        if (age < 18 || age > 65) return false;
-        if (d.getPoids() < 50) return false;
+        if (age < 18 || age > 65) return "L'âge doit être compris entre 18 et 65 ans";
+        if (d.getPoids() < 50) return "Le poids doit être d'au moins 50 kg";
 
         boolean homme = "M".equalsIgnoreCase(d.getSexe());
-        if (d.getHemoglobine() < (homme ? 13f : 12f)) return false;
+        if (d.getHemoglobine() < (homme ? 13f : 12f)) {
+            return "Taux d'hémoglobine insuffisant (minimum " + (homme ? "13" : "12") + " g/dL)";
+        }
 
         if (d.getDernierDon() != null) {
             long jours = ChronoUnit.DAYS.between(d.getDernierDon(), LocalDate.now());
-            if (jours < (homme ? 90 : 120)) return false;
+            int delai = homme ? 90 : 120;
+            if (jours < delai) {
+                return "Dernier don trop récent : prochain don possible le " + d.getDernierDon().plusDays(delai);
+            }
         }
-        return true;
+        return null;
     }
 
     /** Donneur.consulterHistorique() */

@@ -1,0 +1,5 @@
+.dashboard { display:grid; grid-template-columns:250px minmax(0,1fr); gap:28px; align-items:start; padding:36px 0 60px; }
+.content { min-width:0; }
+@media (max-width:850px) {
+  .dashboard { grid-template-columns:1fr; gap:18px; padding-top:18px; }
+}

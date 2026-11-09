@@ -1,0 +1,65 @@
+<div class="page-title">
+  <div><h1>Rendez-vous</h1><p>Confirmez les rendez-vous, enregistrez les dons et planifiez de nouvelles collectes.</p></div>
+  <button class="btn btn-primary" (click)="showRdvForm = !showRdvForm" [disabled]="!store.ready">+ Organiser un don</button>
+</div>
+
+@if (showRdvForm) {
+  <div class="card" style="margin-bottom:28px">
+    <h2>Organiser un don</h2>
+    <form class="form-grid" (ngSubmit)="organiserDon()">
+      <div class="form-group"><label>Email du donneur</label><input type="email" [(ngModel)]="rdvForm.donneurEmail" name="donneurEmail" placeholder="donneur@bloodcare.tn" required></div>
+      <div class="form-group"><label>Date et heure</label><input type="datetime-local" [min]="minDate" [(ngModel)]="rdvForm.date" name="date" required></div>
+      <div class="form-group full"><div class="actions">
+        <button class="btn btn-primary" [disabled]="store.saving || !rdvForm.donneurEmail || !rdvForm.date">{{store.saving ? 'Envoi…' : 'Planifier le rendez-vous'}}</button>
+        <button type="button" class="btn btn-secondary" (click)="showRdvForm = false">Annuler</button>
+      </div></div>
+    </form>
+  </div>
+}
+
+@if (donRdv) {
+  <div class="card" style="margin-bottom:28px">
+    <h2>Enregistrer le don — {{donRdv.donneur?.nom}}</h2>
+    <form class="form-grid" (ngSubmit)="enregistrerDon()">
+      <div class="form-group"><label>Date du don</label><input type="date" [(ngModel)]="donForm.dateDon" name="dateDon" required></div>
+      <div class="form-group"><label>Quantité (ml)</label><input type="number" min="1" [(ngModel)]="donForm.quantite" name="quantite" required></div>
+      <div class="form-group">
+        <label>Groupe sanguin</label>
+        @if (donRdv.donneur?.groupeSanguin) { <input [value]="donRdv.donneur?.groupeSanguin" disabled> }
+        @else { <select [(ngModel)]="donForm.groupeSanguin" name="groupeSanguin">@for (g of groupes; track g) { <option>{{g}}</option> }</select> }
+      </div>
+      <div class="form-group full"><div class="actions">
+        <button class="btn btn-primary" [disabled]="store.saving">{{store.saving ? 'Enregistrement…' : 'Enregistrer le don'}}</button>
+        <button type="button" class="btn btn-secondary" (click)="donRdv = null">Annuler</button>
+      </div></div>
+    </form>
+  </div>
+}
+
+<div class="card table-wrap">
+  @if (store.loading) { <p>Chargement…</p> }
+  @else if (store.rendezVous.length === 0) { <p class="muted">Aucun rendez-vous pour le moment.</p> }
+  @else {
+    <table>
+      <thead><tr><th>Date</th><th>Donneur</th><th>Groupe</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        @for (r of store.rendezVous; track r.id) {
+          <tr>
+            <td>{{r.date | date:'dd/MM/yyyy HH:mm'}}</td>
+            <td><strong>{{r.donneur?.nom}}</strong><br><small class="muted">{{r.donneur?.email}}</small></td>
+            <td>{{r.donneur?.groupeSanguin ?? '—'}}</td>
+            <td><span class="badge" [class]="'badge ' + rdvClass(r.statut)">{{rdvLabel(r.statut)}}</span></td>
+            <td><div class="actions">
+              @if (r.statut === 'PLANIFIE') { <button class="btn btn-outline btn-sm" [disabled]="store.saving" (click)="changerStatut(r, 'CONFIRME')">Confirmer</button> }
+              @if (r.statut === 'PLANIFIE' || r.statut === 'CONFIRME') {
+                <button class="btn btn-primary btn-sm" [disabled]="store.saving" (click)="startDon(r)">Enregistrer le don</button>
+                <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="changerStatut(r, 'ABSENT')">Absent</button>
+                <button class="btn btn-secondary btn-sm" [disabled]="store.saving" (click)="changerStatut(r, 'ANNULE')">Annuler</button>
+              }
+            </div></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

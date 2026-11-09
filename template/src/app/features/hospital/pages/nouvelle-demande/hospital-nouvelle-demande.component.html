@@ -1,0 +1,19 @@
+<div class="page-title">
+  <div><h1>Nouvelle demande de sang</h1><p>La demande est envoyée aux centres de don, qui l'acceptent selon leur stock.</p></div>
+</div>
+
+<div class="card">
+  <form class="form-grid" (ngSubmit)="submit()">
+    <div class="form-group">
+      <label>Groupe sanguin</label>
+      <select [(ngModel)]="request.groupeSanguin" name="groupeSanguin">@for (g of groupes; track g) { <option>{{g}}</option> }</select>
+    </div>
+    <div class="form-group"><label>Quantité (poches)</label><input type="number" min="1" [(ngModel)]="request.quantite" name="quantite" required></div>
+    <div class="form-group">
+      <label>Urgence</label>
+      <select [(ngModel)]="request.urgence" name="urgence"><option>NORMAL</option><option>URGENT</option><option>CRITICAL</option></select>
+    </div>
+    <div class="form-group"><label>Motif</label><input [(ngModel)]="request.motif" name="motif"></div>
+    <div class="form-group full"><button class="btn btn-primary" [disabled]="store.saving || !store.ready">{{store.saving ? 'Envoi…' : 'Envoyer la demande'}}</button></div>
+  </form>
+</div>
